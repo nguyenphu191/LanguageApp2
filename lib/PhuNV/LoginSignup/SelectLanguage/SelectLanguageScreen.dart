@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:language_app/LoginSignup/SelectLanguage/Start2Screen.dart';
+import 'package:language_app/PhuNV/LoginSignup/SelectLanguage/Start2Screen.dart';
 import 'package:language_app/res/imagesLA/AppImages.dart';
+import 'package:language_app/widget/TopBar.dart';
 
 class SelectLanguescreen extends StatefulWidget {
   const SelectLanguescreen({super.key});
@@ -36,41 +37,8 @@ class _SelectLanguescreenState extends State<SelectLanguescreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            Container(
-              height: 100 * pix,
-              width: size.width,
-              color: Color(0xff43AAFF),
-              child: Row(
-                children: [
-                  Container(
-                    width: pix * 50,
-                    margin: EdgeInsets.only(top: 16 * pix),
-                    child: IconButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      icon: Icon(
-                        Icons.arrow_back_ios,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    width: size.width - 100 * pix,
-                    height: 80 * pix,
-                    padding: EdgeInsets.only(top: 30 * pix),
-                    child: Text(
-                      'Chọn ngôn ngữ',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24 * pix,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'BeVietnamPro'),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              ),
+            TopBar(
+              title: 'Chọn ngôn ngữ',
             ),
             Container(
               height: size.height - 100 * pix,

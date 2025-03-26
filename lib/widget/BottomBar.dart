@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:language_app/LoginSignup/LoginScreen.dart';
-import 'package:language_app/Task1/HomeScreen.dart';
-import 'package:language_app/Task1/VocabularyTopicScreen.dart';
+import 'package:language_app/PhuNV/LoginSignup/LoginScreen.dart';
+import 'package:language_app/PhuNV/HomeScreen.dart';
+import 'package:language_app/PhuNV/VocabularyTopicScreen.dart';
+import 'package:language_app/HongNM/ExerciseScreen.dart';
 import 'package:language_app/res/imagesLA/AppImages.dart';
 import 'package:language_app/res/theme/app_colors.dart';
 
@@ -19,21 +20,15 @@ class _BottombarState extends State<Bottombar> {
     final size = MediaQuery.of(context).size;
     final pix = size.width / 375;
     return Container(
-      height: 64 * pix,
-      width: 312 * pix,
-      padding: EdgeInsets.symmetric(horizontal: 8 * pix),
+      height: 60 * pix, // Tăng chiều cao để chứa thêm nhãn
+      width: size.width,
       decoration: BoxDecoration(
-        color: Color(0xffD1D1D6),
-        borderRadius: BorderRadius.circular(50),
-        border: Border.all(
-          color: const Color.fromARGB(255, 130, 130, 130),
-          width: 1 * pix,
-        ),
+        color: Colors.white, // Màu nền trắng
         boxShadow: [
           BoxShadow(
-            color: const Color.fromARGB(255, 0, 0, 0),
-            offset: Offset(0, 0),
-            blurRadius: 5,
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
           ),
         ],
       ),
@@ -41,42 +36,61 @@ class _BottombarState extends State<Bottombar> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _buildActionButton(
-              onTap: () {
-                Navigator.pushReplacement(context,
-                    MaterialPageRoute(builder: (context) => Homescreen()));
-              },
-              image: AppImages.iconhome,
-              enabled: widget.type == 1 ? true : false),
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const Homescreen()),
+              );
+            },
+            image: AppImages.iconhome,
+            label: 'Home', // Thêm nhãn
+            enabled: widget.type == 1,
+          ),
           _buildActionButton(
-              onTap: () {
-                Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => VocabularyTopicscreen()));
-              },
-              image: AppImages.iconvocabulary,
-              enabled: widget.type == 2 ? true : false),
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const VocabularyTopicscreen()),
+              );
+            },
+            image: AppImages.iconvocabulary,
+            label: 'Vocabulary', // Thêm nhãn
+            enabled: widget.type == 2,
+          ),
           _buildActionButton(
-              onTap: () {
-                Navigator.pushReplacement(context,
-                    MaterialPageRoute(builder: (context) => Loginscreen()));
-              },
-              image: AppImages.iconstudy,
-              enabled: widget.type == 3 ? true : false),
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const Exercisescreen()),
+              );
+            },
+            image: AppImages.iconstudy,
+            label: 'Study', // Thêm nhãn
+            enabled: widget.type == 3,
+          ),
           _buildActionButton(
-              onTap: () {
-                Navigator.pushReplacement(context,
-                    MaterialPageRoute(builder: (context) => Loginscreen()));
-              },
-              image: AppImages.icontest,
-              enabled: widget.type == 4 ? true : false),
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const Loginscreen()),
+              );
+            },
+            image: AppImages.icontest,
+            label: 'Test', // Thêm nhãn
+            enabled: widget.type == 4,
+          ),
           _buildActionButton(
-              onTap: () {
-                Navigator.pushReplacement(context,
-                    MaterialPageRoute(builder: (context) => Loginscreen()));
-              },
-              image: AppImages.iconprofile,
-              enabled: widget.type == 5 ? true : false),
+            onTap: () {
+              // Navigator.push(
+              //   context,
+              //   MaterialPageRoute(builder: (context) => const ProfileScreen()),
+              // );
+            },
+            image: AppImages.iconprofile,
+            label: 'Profile', // Thêm nhãn
+            enabled: widget.type == 5,
+          ),
         ],
       ),
     );
@@ -85,22 +99,47 @@ class _BottombarState extends State<Bottombar> {
   Widget _buildActionButton({
     required VoidCallback onTap,
     required String image,
+    required String label,
     required bool enabled,
   }) {
     final size = MediaQuery.of(context).size;
     final pix = size.width / 375;
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        height: 56 * pix,
-        width: 56 * pix,
-        decoration: BoxDecoration(
-          color: enabled ? AppColors.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(50),
-        ),
-        child: Center(
-          child: Image.asset(image, width: 32 * pix, height: 32 * pix),
-        ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            height: 40 * pix,
+            width: 40 * pix,
+            decoration: BoxDecoration(
+              color: enabled
+                  ? AppColors.primary.withOpacity(0.2)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Center(
+              child: Image.asset(
+                image,
+                width: 24 * pix,
+                height: 24 * pix,
+                color: enabled
+                    ? AppColors.primary
+                    : Colors.grey, // Thay đổi màu icon khi active
+              ),
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12 * pix,
+              color: enabled
+                  ? AppColors.primary
+                  : Colors.grey, // Thay đổi màu nhãn khi active
+              fontWeight: enabled ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
       ),
     );
   }

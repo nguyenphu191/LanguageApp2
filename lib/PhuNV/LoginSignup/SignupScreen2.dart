@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:language_app/LoginSignup/LoginScreen.dart';
-import 'package:language_app/LoginSignup/SignupScreen2.dart';
+import 'package:language_app/PhuNV/LoginSignup/LoginScreen.dart';
+import 'package:language_app/PhuNV/LoginSignup/SelectLanguage/Start1Screen.dart';
 import 'package:language_app/res/imagesLA/AppImages.dart';
+import 'package:language_app/widget/TopBar.dart';
 
-class Signupscreen extends StatefulWidget {
-  const Signupscreen({super.key});
+class Signupscreen2 extends StatefulWidget {
+  const Signupscreen2({super.key});
 
   @override
-  State<Signupscreen> createState() => _SignupscreenState();
+  State<Signupscreen2> createState() => _Signupscreen2State();
 }
 
-class _SignupscreenState extends State<Signupscreen> {
+class _Signupscreen2State extends State<Signupscreen2> {
+  bool _obscureText1 = true;
+  bool _obscureText2 = true;
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -19,101 +22,63 @@ class _SignupscreenState extends State<Signupscreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            Container(
-              height: 100 * pix,
-              width: size.width,
-              color: Color(0xff43AAFF),
-              child: Row(
-                children: [
-                  Container(
-                    width: pix * 50,
-                    margin: EdgeInsets.only(top: 16 * pix),
-                    child: IconButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      icon: Icon(
-                        Icons.arrow_back_ios,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    width: size.width - 100 * pix,
-                    height: 80 * pix,
-                    padding: EdgeInsets.only(top: 30 * pix),
-                    child: Text(
-                      'Đăng ký',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24 * pix,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'BeVietnamPro'),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            TopBar(title: 'Đăng ký', isBack: true),
             Center(
-              child: Column(
-                children: [
-                  Container(
-                    width: 105 * pix,
-                    height: 82 * pix,
-                    padding: EdgeInsets.all(10 * pix),
-                    child: Image.asset(AppImages.learnhome),
+              child: Container(
+                width: 175 * pix,
+                height: 180 * pix,
+                margin: EdgeInsets.only(top: 20 * pix, left: 20 * pix),
+                padding: EdgeInsets.all(10 * pix),
+                child: Image.asset(AppImages.personlearn2),
+              ),
+            ),
+            Container(
+              width: size.width,
+              height: 20 * pix,
+              padding: EdgeInsets.only(left: 16 * pix, right: 20 * pix),
+              margin: EdgeInsets.only(bottom: 5 * pix),
+              child: Text(
+                'Mật khẩu',
+                style: TextStyle(
+                    fontSize: 14 * pix,
+                    fontFamily: 'BeVietnamPro',
+                    color: Colors.black),
+                textAlign: TextAlign.left,
+              ),
+            ),
+            Container(
+              width: size.width,
+              height: 56 * pix,
+              margin: EdgeInsets.symmetric(horizontal: 16 * pix),
+              padding: EdgeInsets.only(left: 16 * pix),
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(16 * pix),
+              ),
+              child: TextField(
+                obscureText: _obscureText1,
+                decoration: InputDecoration(
+                  labelText: 'Nhập mật khẩu',
+                  labelStyle: TextStyle(
+                    fontSize: 14 * pix,
+                    fontFamily: 'BeVietnamPro',
+                    color: Colors.grey,
                   ),
-                  Container(
-                    width: size.width,
-                    height: 70 * pix,
-                    padding: EdgeInsets.only(top: 10 * pix),
-                    child: Text(
-                      'Bắt đầu học ngay thôi nào!',
-                      style: TextStyle(
-                          fontSize: 22 * pix,
-                          fontFamily: 'BeVietnamPro',
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black),
-                      textAlign: TextAlign.center,
+                  border: InputBorder.none,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureText1 ? Icons.visibility_off : Icons.visibility,
+                      color: Colors.grey,
                     ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureText1 = !_obscureText1;
+                      });
+                    },
                   ),
-                ],
+                ),
               ),
-            ),
-            Container(
-              width: size.width,
-              height: 20 * pix,
-              padding: EdgeInsets.only(left: 16 * pix, right: 20 * pix),
-              margin: EdgeInsets.only(bottom: 5 * pix),
-              child: Text(
-                'Họ và tên đệm',
-                style: TextStyle(
-                    fontSize: 14 * pix,
-                    fontFamily: 'BeVietnamPro',
-                    color: Colors.black),
-                textAlign: TextAlign.left,
-              ),
-            ),
-            Container(
-              width: size.width,
-              height: 56 * pix,
-              margin: EdgeInsets.only(left: 16 * pix, right: 16 * pix),
-              padding: EdgeInsets.only(left: 16 * pix),
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(16 * pix),
-              ),
-              child: TextField(
-                  decoration: InputDecoration(
-                labelText: 'Nhập họ của bạn',
-                labelStyle: TextStyle(
-                    fontSize: 14 * pix,
-                    fontFamily: 'BeVietnamPro',
-                    color: Colors.grey),
-                border: InputBorder.none,
-              )),
             ),
             SizedBox(
               height: 16 * pix,
@@ -124,7 +89,7 @@ class _SignupscreenState extends State<Signupscreen> {
               padding: EdgeInsets.only(left: 16 * pix, right: 20 * pix),
               margin: EdgeInsets.only(bottom: 5 * pix),
               child: Text(
-                'Tên',
+                'Xác nhận mật khẩu',
                 style: TextStyle(
                     fontSize: 14 * pix,
                     fontFamily: 'BeVietnamPro',
@@ -135,7 +100,7 @@ class _SignupscreenState extends State<Signupscreen> {
             Container(
               width: size.width,
               height: 56 * pix,
-              margin: EdgeInsets.only(left: 16 * pix, right: 16 * pix),
+              margin: EdgeInsets.symmetric(horizontal: 16 * pix),
               padding: EdgeInsets.only(left: 16 * pix),
               decoration: BoxDecoration(
                 color: Colors.grey[200],
@@ -143,72 +108,50 @@ class _SignupscreenState extends State<Signupscreen> {
                 borderRadius: BorderRadius.circular(16 * pix),
               ),
               child: TextField(
-                  decoration: InputDecoration(
-                labelText: 'Nhập tên của bạn',
-                labelStyle: TextStyle(
+                obscureText: _obscureText2,
+                decoration: InputDecoration(
+                  labelText: 'Nhập lại mật khẩu',
+                  labelStyle: TextStyle(
                     fontSize: 14 * pix,
                     fontFamily: 'BeVietnamPro',
-                    color: Colors.grey),
-                border: InputBorder.none,
-              )),
-            ),
-            SizedBox(
-              height: 16 * pix,
-            ),
-            Container(
-              width: size.width,
-              height: 20 * pix,
-              padding: EdgeInsets.only(left: 16 * pix, right: 20 * pix),
-              margin: EdgeInsets.only(bottom: 5 * pix),
-              child: Text(
-                'Email',
-                style: TextStyle(
-                    fontSize: 14 * pix,
-                    fontFamily: 'BeVietnamPro',
-                    color: Colors.black),
-                textAlign: TextAlign.left,
+                    color: Colors.grey,
+                  ),
+                  border: InputBorder.none,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureText2 ? Icons.visibility_off : Icons.visibility,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureText2 = !_obscureText2;
+                      });
+                    },
+                  ),
+                ),
               ),
             ),
-            Container(
-              width: size.width,
-              height: 56 * pix,
-              margin: EdgeInsets.only(left: 16 * pix, right: 16 * pix),
-              padding: EdgeInsets.only(left: 16 * pix),
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(16 * pix),
-              ),
-              child: TextField(
-                  decoration: InputDecoration(
-                labelText: 'Nhập email của bạn',
-                labelStyle: TextStyle(
-                    fontSize: 14 * pix,
-                    fontFamily: 'BeVietnamPro',
-                    color: Colors.grey),
-                border: InputBorder.none,
-              )),
-            ),
             SizedBox(
-              height: 69 * pix,
+              height: 89 * pix,
             ),
             Padding(
               padding: EdgeInsets.all(16 * pix),
               child: InkWell(
                 onTap: () {
                   Navigator.push(context,
-                      MaterialPageRoute(builder: (context) => Signupscreen2()));
+                      MaterialPageRoute(builder: (context) => Start1screen()));
                 },
                 child: Container(
                   width: size.width,
                   height: 56 * pix,
+                  margin: EdgeInsets.only(top: 16 * pix),
                   padding: EdgeInsets.only(
                       left: 16 * pix, right: 16 * pix, top: 12 * pix),
                   decoration: BoxDecoration(
                     color: Color(0xff5B7BFE),
                     borderRadius: BorderRadius.circular(16 * pix),
                   ),
-                  child: Text('Tiếp tục',
+                  child: Text('Đăng ký',
                       style: TextStyle(
                           fontSize: 20 * pix,
                           fontFamily: 'BeVietnamPro',

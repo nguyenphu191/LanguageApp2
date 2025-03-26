@@ -21,7 +21,16 @@ class AppImages {
   static const String start = '${_internalImagePath}start.png';
 
   static const String family = '${_internalImagePath}family.png';
+  static const String finish = '${_internalImagePath}finish.png';
+  static const String iconclock = '${_internalImagePath}iconclock.png';
+  static const String icontrue = '${_internalImagePath}icontrue.png';
+  static const String icontrue2 = '${_internalImagePath}icontrue2.png';
+  static const String iconfalse = '${_internalImagePath}iconfalse.png';
   static const String flashdown = '${_internalImagePath}flashdown.png';
+  static const String listen = '${_internalImagePath}listen.png';
+  static const String speak = '${_internalImagePath}speak.png';
+  static const String talk = '${_internalImagePath}talk.png';
+  static const String searchdetail = '${_internalImagePath}searchdetail.png';
   static const String animal = '${_internalImagePath}animal.png';
   static const String learnhome = '${_internalImagePath}learnhome.png';
   static const String iconprofile = '${_internalImagePath}iconprofile.png';

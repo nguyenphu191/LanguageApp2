@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:language_app/LoginSignup/SelectLanguage/SelectLanguageScreen.dart';
-import 'package:language_app/Task1/HomeScreen.dart';
+import 'package:language_app/PhuNV/LoginSignup/SelectLanguage/SelectLanguageScreen.dart';
+import 'package:language_app/PhuNV/HomeScreen.dart';
 import 'package:language_app/res/imagesLA/AppImages.dart';
+import 'package:language_app/widget/TopBar.dart';
 
 class Start2screen extends StatefulWidget {
   const Start2screen({super.key});
@@ -19,41 +20,8 @@ class _Start2screenState extends State<Start2screen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            Container(
-              height: 100 * pix,
-              width: size.width,
-              color: Color(0xff43AAFF),
-              child: Row(
-                children: [
-                  Container(
-                    width: pix * 50,
-                    margin: EdgeInsets.only(top: 16 * pix),
-                    child: IconButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      icon: Icon(
-                        Icons.arrow_back_ios,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    width: size.width - 100 * pix,
-                    height: 80 * pix,
-                    padding: EdgeInsets.only(top: 30 * pix),
-                    child: Text(
-                      '',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24 * pix,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'BeVietnamPro'),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              ),
+            TopBar(
+              title: 'Học ngay thôi',
             ),
             Center(
               child: Container(

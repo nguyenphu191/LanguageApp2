@@ -3,6 +3,8 @@ class AppImages {
 
   static const String score = '${_internalImagePath}score.png';
   static const String intro = '${_internalImagePath}intro.png';
+  static const String intro2 = '${_internalImagePath}intro2.png';
+  static const String imgbook = '${_internalImagePath}imgbook.png';
   static const String personlearn1 = '${_internalImagePath}personlearn1.png';
   static const String personlearn2 = '${_internalImagePath}personlearn2.png';
   static const String personlearn3 = '${_internalImagePath}personlearn3.png';
@@ -41,4 +43,9 @@ class AppImages {
   static const String iconsend = '${_internalImagePath}iconsend.png';
   static const String iconvocabulary =
       '${_internalImagePath}iconvocabulary.png';
+
+  static const String imgnguphap = '${_internalImagePath}imgnguphap.png';
+  static const String imgnghe = '${_internalImagePath}imgnghe.png';
+  static const String imgnoi = '${_internalImagePath}imgnoi.png';
+  static const String bgdolisten = '${_internalImagePath}bgdolisten.png';
 }

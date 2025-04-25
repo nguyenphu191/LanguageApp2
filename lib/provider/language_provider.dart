@@ -143,7 +143,6 @@ class LanguageProvider with ChangeNotifier {
     if (token == null) return false;
 
     _isLoading = true;
-    _error = null;
     notifyListeners();
     Map<String, dynamic> body = {};
     if (name != null) body['name'] = name;
@@ -173,7 +172,6 @@ class LanguageProvider with ChangeNotifier {
         return false;
       }
     } catch (e) {
-      _error = e.toString();
       _isLoading = false;
       notifyListeners();
       return false;
@@ -181,13 +179,12 @@ class LanguageProvider with ChangeNotifier {
   }
 
   // Xóa ngôn ngữ
-  Future<bool> deleteLanguage(String id) async {
+  Future<bool> deleteLanguage(int id) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("token");
     if (token == null) return false;
 
     _isLoading = true;
-    _error = null;
     notifyListeners();
 
     try {
@@ -201,28 +198,20 @@ class LanguageProvider with ChangeNotifier {
 
       if (response.statusCode == 200) {
         // Xóa ngôn ngữ khỏi danh sách cục bộ
-        _languages.removeWhere((language) => language.id == id);
+        _languages.removeWhere((language) => language.id == id.toString());
         _isLoading = false;
-        _error = null;
         notifyListeners();
         return true;
       } else {
-        _error = 'Failed to delete language: ${response.statusCode}';
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
       print('Error deleting language: $e');
-      _error = e.toString();
       _isLoading = false;
       notifyListeners();
       return false;
     }
-  }
-
-  // Lấy thông báo lỗi
-  String getErrorMessage() {
-    return _error ?? 'Đã có lỗi xảy ra';
   }
 }

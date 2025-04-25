@@ -123,20 +123,26 @@ class _LanguageScreenState extends State<LanguageScreen> {
                             },
                           );
                         },
-                        onDismissed: (direction) {
-                          languageProvider.deleteLanguage(language.id);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Đã xóa ngôn ngữ ${language.name}'),
-                              action: SnackBarAction(
-                                label: 'Hoàn tác',
-                                onPressed: () {
-                                  // Không có chức năng hoàn tác thực sự, chỉ làm mới danh sách
-                                  languageProvider.fetchLanguages();
-                                },
+                        onDismissed: (direction) async {
+                          bool res = await languageProvider
+                              .deleteLanguage(int.parse(language.id));
+                          if (res) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  "Đã xóa ngôn ngữ '${language.name}'",
+                                ),
                               ),
-                            ),
-                          );
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  "Lỗi: Không thể xóa ngôn ngữ '${language.name}'",
+                                ),
+                              ),
+                            );
+                          }
                         },
                         child: Card(
                           elevation: 4,

@@ -1,18 +1,12 @@
-import 'dart:math' as Math;
-
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'dart:io';
-import 'package:dio/dio.dart';
 import 'package:language_app/Models/topic_model.dart';
 import 'package:language_app/utils/baseurl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http_parser/http_parser.dart';
 
 class TopicProvider with ChangeNotifier {
   String baseUrl = "${UrlUtils.getBaseUrl()}vocab-topics/";
-  final Dio _dio = Dio();
   int _completed = 0;
   int _total = 0;
   int get completed => _completed;
@@ -79,9 +73,9 @@ class TopicProvider with ChangeNotifier {
   // Tạo chủ đề mới với ảnh
   Future<bool> createTopic({
     required String topic,
-    required String languageId,
-    required String level,
-    required File imageFile,
+    required int languageId,
+    required int level,
+    required String imageUrl,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("token");
@@ -91,47 +85,24 @@ class TopicProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // In ra thông tin debug
-      print(
-          'Creating topic with token: ${token.substring(0, Math.min(10, token.length))}...');
-      print('Topic: $topic');
-      print('LanguageId: $languageId');
-      print('Level: $level');
-      print('Image path: ${imageFile.path}');
-      print('Image exists: ${await imageFile.exists()}');
-      print('Image size: ${await imageFile.length()} bytes');
-
-      // Xác định phần mở rộng file và mediaType
-      final String fileExtension = imageFile.path.split('.').last.toLowerCase();
-
-      // Tạo FormData để gửi file với đúng tên trường
-      final formData = FormData.fromMap({
-        'topic': topic,
-        'languageId': languageId,
-        'level': level,
-        // Đổi từ 'image' sang 'file' nếu server yêu cầu
-        'image': await MultipartFile.fromFile(
-          imageFile.path,
-          filename: 'topic.$fileExtension',
-        ),
-      });
-
       // Gửi request với Dio và in thêm thông tin
-      final response = await _dio.post(
-        baseUrl,
-        data: formData,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        ),
+      final response = await http.post(
+        Uri.parse(baseUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({
+          'topic': topic,
+          'languageId': languageId,
+          'level': level,
+          'imageUrl': imageUrl,
+        }),
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response data: ${response.data}');
-
-      if (response.statusCode == 201) {
-        await fetchTopics();
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = json.decode(response.body);
+        _topics.add(TopicModel.fromJson(data['data']));
         _isLoading = false;
         notifyListeners();
         return true;
@@ -151,76 +122,39 @@ class TopicProvider with ChangeNotifier {
   // Cập nhật chủ đề
   Future<bool> updateTopic({
     required String id,
-    required String topic,
-    required String languageId,
-    required String level,
-    File? imageFile,
+    String? topic,
+    int? languageId,
+    int? level,
+    String? imageUrl,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("token");
     if (token == null) return false;
-
+    Map<String, dynamic> body = {};
+    if (topic != null) body['topic'] = topic;
+    if (languageId != null) body['languageId'] = languageId;
+    if (level != null) body['level'] = level;
+    if (imageUrl != null) body['imageUrl'] = imageUrl;
     _isLoading = true;
     notifyListeners();
 
     try {
-      // Tạo FormData
-      Map<String, dynamic> formMap = {
-        'topic': topic,
-        'languageId': languageId,
-        'level': level,
-      };
-
-      // Thêm file ảnh nếu có
-      if (imageFile != null) {
-        final String fileExtension =
-            imageFile.path.split('.').last.toLowerCase();
-
-        // Xác định mediaType dựa trên phần mở rộng của file
-        MediaType? mediaType;
-        switch (fileExtension) {
-          case 'jpg':
-          case 'jpeg':
-            mediaType = MediaType('image', 'jpeg');
-            break;
-          case 'png':
-            mediaType = MediaType('image', 'png');
-            break;
-          case 'gif':
-            mediaType = MediaType('image', 'gif');
-            break;
-          case 'webp':
-            mediaType = MediaType('image', 'webp');
-            break;
-          default:
-            mediaType = MediaType('image', 'jpeg');
-        }
-
-        formMap['image'] = await MultipartFile.fromFile(
-          imageFile.path,
-          filename: 'topic.$fileExtension',
-          contentType: mediaType,
-        );
-      }
-
-      final formData = FormData.fromMap(formMap);
-
-      // Gửi request với Dio
-      final response = await _dio.put(
-        '$baseUrl$id',
-        data: formData,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-          followRedirects: true,
-          validateStatus: (status) => true,
-        ),
+      final response = await http.patch(
+        Uri.parse('$baseUrl$id'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode(body),
       );
 
-      if (response.statusCode == 200) {
-        // Cập nhật danh sách chủ đề
-        await fetchTopics();
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        final updated = TopicModel.fromJson(data['data']);
+        final index = _topics.indexWhere((lang) => lang.id == id.toString());
+        if (index != -1) {
+          _topics[index] = updated;
+        }
         _isLoading = false;
         notifyListeners();
         return true;

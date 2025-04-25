@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:language_app/PhuNV/Admin/language_screen.dart';
 import 'package:language_app/PhuNV/Admin/topic_manager.dart';
 import 'package:language_app/PhuNV/Admin/vocabulary_management_screen.dart';
+import 'package:language_app/provider/auth_provider.dart';
 import 'package:language_app/widget/top_bar.dart';
+import 'package:provider/provider.dart';
 
 class AdminScreen extends StatelessWidget {
   const AdminScreen({Key? key}) : super(key: key);
@@ -28,8 +30,59 @@ class AdminScreen extends StatelessWidget {
               top: 0,
               left: 0,
               right: 0,
-              child: TopBar(
-                title: "Quản trị viên",
+              child: Container(
+                height: 100 * pix,
+                width: size.width,
+                padding: EdgeInsets.only(top: 10 * pix),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xff43AAFF), Color(0xff5053FF)],
+                  ),
+                ),
+                child: Center(
+                  child: Container(
+                    width: size.width - 100 * pix,
+                    height: 80 * pix,
+                    padding: EdgeInsets.only(top: 30 * pix),
+                    child: Text(
+                      'Quản trị viên',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24 * pix,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'BeVietnamPro'),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 48 * pix,
+              right: 10 * pix,
+              child: Container(
+                width: 30 * pix,
+                height: 30 * pix,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(25 * pix),
+                ),
+                child: IconButton(
+                  padding: EdgeInsets.only(
+                    left: 5,
+                  ),
+                  icon: Icon(
+                    Icons.logout,
+                    color: Colors.red,
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    Provider.of<AuthProvider>(context, listen: false).logout();
+                    Navigator.pop(context);
+                  },
+                ),
               ),
             ),
             Positioned(

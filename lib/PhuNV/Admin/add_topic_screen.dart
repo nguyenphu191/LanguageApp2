@@ -6,8 +6,6 @@ import 'package:provider/provider.dart';
 import 'package:language_app/Models/topic_model.dart';
 import 'package:language_app/models/language_model.dart';
 import 'package:language_app/widget/top_bar.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 
 class AddTopicScreen extends StatefulWidget {
   final TopicModel? topic;
@@ -26,25 +24,18 @@ class AddTopicScreen extends StatefulWidget {
 class _AddTopicScreenState extends State<AddTopicScreen> {
   final _formKey = GlobalKey<FormState>();
   final _topicController = TextEditingController();
+  final _imageController = TextEditingController();
 
-  File? _imageFile;
-  final _imagePicker = ImagePicker();
   bool _isLoading = false;
 
-  String? _selectedLanguageId;
-  String _selectedLevel = 'beginner';
+  int _selectedLanguageId = 1;
+  int _selectedLevel = 1;
 
-  final List<String> _levels = [
-    'beginner',
-    'intermediate',
-    'advanced',
-    'expert'
-  ];
-  final Map<String, String> _levelNames = {
-    'beginner': 'Cơ bản',
-    'intermediate': 'Trung cấp',
-    'advanced': 'Nâng cao',
-    'expert': 'Chuyên gia',
+  final List<int> _levels = [1, 2, 3];
+  final Map<int, String> _levelNames = {
+    1: 'Cơ bản',
+    2: 'Trung cấp',
+    3: 'Nâng cao',
   };
 
   @override
@@ -59,7 +50,7 @@ class _AddTopicScreenState extends State<AddTopicScreen> {
     // Nếu đang chỉnh sửa topic, điền thông tin sẵn có
     if (widget.isEditing && widget.topic != null) {
       _topicController.text = widget.topic!.topic;
-      _selectedLevel = widget.topic!.level;
+      _selectedLevel = int.parse(widget.topic!.level);
     }
   }
 
@@ -67,55 +58,6 @@ class _AddTopicScreenState extends State<AddTopicScreen> {
   void dispose() {
     _topicController.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickImage() async {
-    try {
-      final pickedFile = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 80,
-      );
-
-      if (pickedFile != null) {
-        print('Image picked: ${pickedFile.path}');
-        final String extension = pickedFile.path.split('.').last.toLowerCase();
-        final List<String> validExtensions = [
-          'jpg',
-          'jpeg',
-          'png',
-          'gif',
-          'webp',
-          'bmp'
-        ];
-
-        if (validExtensions.contains(extension)) {
-          setState(() {
-            _imageFile = File(pickedFile.path);
-          });
-
-          // Hiển thị thông báo thành công
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Đã chọn ảnh thành công')),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  'Vui lòng chọn file có định dạng hình ảnh hợp lệ (jpg, jpeg, png, gif, webp, bmp)'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      print('Lỗi khi chọn ảnh: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Lỗi khi chọn ảnh: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 
   Future<void> _saveTopic() async {
@@ -126,14 +68,6 @@ class _AddTopicScreenState extends State<AddTopicScreen> {
     if (_selectedLanguageId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Vui lòng chọn ngôn ngữ')),
-      );
-      return;
-    }
-
-    // Kiểm tra ảnh
-    if (!widget.isEditing && _imageFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Vui lòng chọn ảnh cho chủ đề')),
       );
       return;
     }
@@ -151,17 +85,17 @@ class _AddTopicScreenState extends State<AddTopicScreen> {
         success = await topicProvider.updateTopic(
           id: widget.topic!.id,
           topic: _topicController.text,
-          languageId: _selectedLanguageId!,
+          languageId: _selectedLanguageId,
           level: _selectedLevel,
-          imageFile: _imageFile,
+          imageUrl: _imageController.text,
         );
       } else {
         // Thêm topic mới
         success = await topicProvider.createTopic(
           topic: _topicController.text,
-          languageId: _selectedLanguageId!,
+          languageId: _selectedLanguageId,
           level: _selectedLevel,
-          imageFile: _imageFile!,
+          imageUrl: _imageController.text,
         );
       }
 
@@ -238,66 +172,6 @@ class _AddTopicScreenState extends State<AddTopicScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Ảnh chủ đề
-                      Center(
-                        child: InkWell(
-                          onTap: _pickImage,
-                          child: Container(
-                            width: 150,
-                            height: 150,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.grey),
-                            ),
-                            child: _imageFile != null
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Image.file(
-                                      _imageFile!,
-                                      width: 150,
-                                      height: 150,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  )
-                                : widget.isEditing && widget.topic != null
-                                    ? ClipRRect(
-                                        borderRadius: BorderRadius.circular(10),
-                                        child: Image.network(
-                                          widget.topic!.imageUrl,
-                                          width: 150,
-                                          height: 150,
-                                          fit: BoxFit.cover,
-                                          errorBuilder:
-                                              (context, error, stackTrace) {
-                                            return Icon(
-                                              Icons.add_photo_alternate,
-                                              size: 50,
-                                              color: Colors.grey[500],
-                                            );
-                                          },
-                                        ),
-                                      )
-                                    : Icon(
-                                        Icons.add_photo_alternate,
-                                        size: 50,
-                                        color: Colors.grey[500],
-                                      ),
-                          ),
-                        ),
-                      ),
-                      Center(
-                        child: TextButton(
-                          onPressed: _pickImage,
-                          child: Text(
-                            'Nhấn để chọn ảnh',
-                            style: TextStyle(color: Colors.blue),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 20),
-
-                      // Tên chủ đề
                       Text(
                         'Tên chủ đề',
                         style: TextStyle(
@@ -355,7 +229,7 @@ class _AddTopicScreenState extends State<AddTopicScreen> {
                               ),
                               hint: Text('Chọn ngôn ngữ'),
                               isExpanded: true,
-                              value: _selectedLanguageId,
+                              value: _selectedLanguageId.toString(),
                               items: languageProvider.languages
                                   .map((LanguageModel language) {
                                 return DropdownMenuItem<String>(
@@ -384,7 +258,7 @@ class _AddTopicScreenState extends State<AddTopicScreen> {
                               }).toList(),
                               onChanged: (value) {
                                 setState(() {
-                                  _selectedLanguageId = value;
+                                  _selectedLanguageId = int.parse(value!);
                                 });
                               },
                             ),
@@ -415,20 +289,46 @@ class _AddTopicScreenState extends State<AddTopicScreen> {
                           decoration: InputDecoration(
                             border: InputBorder.none,
                           ),
-                          value: _selectedLevel,
+                          value: _selectedLevel.toString(),
                           isExpanded: true,
-                          items: _levels.map((String level) {
+                          items: _levels.map((int level) {
                             return DropdownMenuItem<String>(
-                              value: level,
-                              child: Text(_levelNames[level] ?? level),
+                              value: level.toString(),
+                              child: Text(_levelNames[level]!),
                             );
                           }).toList(),
                           onChanged: (value) {
                             setState(() {
-                              _selectedLevel = value!;
+                              _selectedLevel = int.parse(value!);
                             });
                           },
                         ),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Image chủ đề (URL)',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      TextFormField(
+                        controller: _imageController,
+                        decoration: InputDecoration(
+                          hintText: 'Nhập link ảnh chủ đề',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          fillColor: Colors.white,
+                          filled: true,
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Vui lòng nhập link ảnh chủ đề';
+                          }
+                          return null;
+                        },
                       ),
                       SizedBox(height: 30),
 

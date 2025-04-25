@@ -2,15 +2,11 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:language_app/models/language_model.dart';
-import 'dart:io';
-import 'package:dio/dio.dart';
 import 'package:language_app/utils/baseurl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http_parser/http_parser.dart';
 
 class LanguageProvider with ChangeNotifier {
   String baseUrl = "${UrlUtils.getBaseUrl()}languages/";
-  final Dio _dio = Dio();
 
   List<LanguageModel> _languages = [];
   LanguageModel? _selectedLanguage;
@@ -96,91 +92,40 @@ class LanguageProvider with ChangeNotifier {
   // Tạo ngôn ngữ mới với ảnh
   Future<bool> createLanguage({
     required String name,
-    required String code,
-    required String description,
-    required File imageFile,
+    required String flagUrl,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("token");
     if (token == null) return false;
 
     _isLoading = true;
-    _error = null;
     notifyListeners();
 
     try {
-      // Xác định phần mở rộng file và mediaType
-      final String fileExtension = imageFile.path.split('.').last.toLowerCase();
-
-      // Xác định mediaType dựa trên phần mở rộng của file
-      MediaType? mediaType;
-      switch (fileExtension) {
-        case 'jpg':
-        case 'jpeg':
-          mediaType = MediaType('image', 'jpeg');
-          break;
-        case 'png':
-          mediaType = MediaType('image', 'png');
-          break;
-        case 'gif':
-          mediaType = MediaType('image', 'gif');
-          break;
-        case 'webp':
-          mediaType = MediaType('image', 'webp');
-          break;
-        case 'bmp':
-          mediaType = MediaType('image', 'bmp');
-          break;
-        default:
-          mediaType = MediaType('image', 'jpeg'); // Mặc định là jpeg
-      }
-
-      // Tạo FormData để gửi file với contentType
-      final formData = FormData.fromMap({
-        'name': name,
-        'code': code,
-        'description': description,
-        'image': await MultipartFile.fromFile(
-          imageFile.path,
-          filename: 'image.$fileExtension',
-          contentType: mediaType,
-        ),
-      });
-
-      // In ra thông tin request
-      print('Sending request to: $baseUrl');
-
-      // Gửi request với Dio
-      final response = await _dio.post(
-        baseUrl,
-        data: formData,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-          followRedirects: true,
-          validateStatus: (status) =>
-              true, // Chấp nhận mọi status code để xem lỗi
-        ),
+      final response = await http.post(
+        Uri.parse(baseUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({
+          'name': name,
+          'flagUrl': flagUrl,
+        }),
       );
-
-      if (response.statusCode == 201) {
-        // Cập nhật danh sách ngôn ngữ
-        await fetchLanguages();
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = json.decode(response.body);
+        _languages.add(LanguageModel.fromJson(data['data']));
         _isLoading = false;
-        _error = null;
         notifyListeners();
         return true;
       } else {
-        _error =
-            'Failed to create language: ${response.statusCode} - ${response.data}';
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
       print('Error creating language: $e');
-      _error = e.toString();
       _isLoading = false;
       notifyListeners();
       return false;
@@ -189,10 +134,9 @@ class LanguageProvider with ChangeNotifier {
 
   // Cập nhật ngôn ngữ
   Future<bool> updateLanguage({
-    required String id,
-    required String name,
-    required String description,
-    File? imageFile,
+    required int id,
+    String? name,
+    String? flagUrl,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("token");
@@ -201,83 +145,34 @@ class LanguageProvider with ChangeNotifier {
     _isLoading = true;
     _error = null;
     notifyListeners();
-
+    Map<String, dynamic> body = {};
+    if (name != null) body['name'] = name;
+    if (flagUrl != null) body['flagUrl'] = flagUrl;
     try {
-      // Tạo FormData
-      Map<String, dynamic> formMap = {
-        'name': name,
-        'description': description,
-      };
-
-      // Thêm file ảnh nếu có
-      if (imageFile != null) {
-        final String fileExtension =
-            imageFile.path.split('.').last.toLowerCase();
-
-        // Xác định mediaType dựa trên phần mở rộng của file
-        MediaType? mediaType;
-        switch (fileExtension) {
-          case 'jpg':
-          case 'jpeg':
-            mediaType = MediaType('image', 'jpeg');
-            break;
-          case 'png':
-            mediaType = MediaType('image', 'png');
-            break;
-          case 'gif':
-            mediaType = MediaType('image', 'gif');
-            break;
-          case 'webp':
-            mediaType = MediaType('image', 'webp');
-            break;
-          case 'bmp':
-            mediaType = MediaType('image', 'bmp');
-            break;
-          default:
-            mediaType = MediaType('image', 'jpeg');
-        }
-
-        formMap['image'] = await MultipartFile.fromFile(
-          imageFile.path,
-          filename: 'image.$fileExtension',
-          contentType: mediaType,
-        );
-      }
-
-      final formData = FormData.fromMap(formMap);
-
-      // Gửi request với Dio
-      final response = await _dio.put(
-        '$baseUrl$id',
-        data: formData,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-          followRedirects: true,
-          validateStatus: (status) => true,
-        ),
+      final response = await http.patch(
+        Uri.parse('$baseUrl$id'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode(body),
       );
-
-      print('Update response status: ${response.statusCode}');
-      print('Update response data: ${response.data}');
-
-      if (response.statusCode == 200) {
-        // Cập nhật danh sách ngôn ngữ
-        await fetchLanguages();
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        final updatedLanguage = LanguageModel.fromJson(data['data']);
+        final index = _languages.indexWhere((lang) => lang.id == id.toString());
+        if (index != -1) {
+          _languages[index] = updatedLanguage;
+        }
         _isLoading = false;
-        _error = null;
         notifyListeners();
         return true;
       } else {
-        _error =
-            'Failed to update language: ${response.statusCode} - ${response.data}';
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
-      print('Error updating language: $e');
       _error = e.toString();
       _isLoading = false;
       notifyListeners();

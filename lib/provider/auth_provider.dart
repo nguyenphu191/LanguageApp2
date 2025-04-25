@@ -78,9 +78,8 @@ class AuthProvider extends ChangeNotifier {
 
       _isLoading = false;
 
-      final responseBody = json.decode(response.body);
 
-      if (response.statusCode == 200 && responseBody['success'] == true) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         notifyListeners();
         return true;
       } else {

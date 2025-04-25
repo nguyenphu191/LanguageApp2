@@ -150,8 +150,8 @@ class _LanguageScreenState extends State<LanguageScreen> {
                               borderRadius: BorderRadius.circular(8),
                               child: Image.network(
                                 language.imageUrl,
-                                width: 60,
-                                height: 60,
+                                width: 80,
+                                height: 80,
                                 fit: BoxFit.cover,
                                 errorBuilder: (context, error, stackTrace) {
                                   return Container(
@@ -173,29 +173,6 @@ class _LanguageScreenState extends State<LanguageScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SizedBox(height: 4),
-                                Text(
-                                  'Mã: ${language.code}',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  language.description,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
                             trailing: IconButton(
                               icon: Icon(Icons.edit),
                               onPressed: () {
@@ -210,80 +187,6 @@ class _LanguageScreenState extends State<LanguageScreen> {
                                 );
                               },
                             ),
-                            onTap: () {
-                              // Hiển thị chi tiết ngôn ngữ nếu cần
-                              showDialog(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    title: Text(language.name),
-                                    content: SingleChildScrollView(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                            child: Image.network(
-                                              language.imageUrl,
-                                              width: double.infinity,
-                                              height: 200,
-                                              fit: BoxFit.cover,
-                                              errorBuilder:
-                                                  (context, error, stackTrace) {
-                                                return Container(
-                                                  width: double.infinity,
-                                                  height: 200,
-                                                  color: Colors.grey[300],
-                                                  child: Icon(
-                                                    Icons.image_not_supported,
-                                                    color: Colors.grey[500],
-                                                    size: 50,
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                          SizedBox(height: 16),
-                                          Text(
-                                            'Mã ngôn ngữ: ${language.code}',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                          SizedBox(height: 8),
-                                          Text(
-                                              'Mô tả: ${language.description}'),
-                                          SizedBox(height: 8),
-                                          Text(
-                                            'Ngày tạo: ${language.createdAt}',
-                                            style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey),
-                                          ),
-                                          SizedBox(height: 4),
-                                          Text(
-                                            'Cập nhật lần cuối: ${language.updatedAt}',
-                                            style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.of(context).pop();
-                                        },
-                                        child: Text('Đóng'),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                            },
                           ),
                         ),
                       );

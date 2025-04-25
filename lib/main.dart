@@ -13,6 +13,7 @@ import 'package:language_app/provider/topic_provider.dart';
 import 'package:language_app/provider/user_provider.dart';
 import 'package:language_app/provider/vocabulary_provider.dart';
 import 'package:language_app/res/imagesLA/AppImages.dart';
+import 'package:language_app/utils/baseurl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -41,7 +42,7 @@ Future<void> main() async {
 
   // Request permissions
   await Permission.microphone.request();
-  await Permission.storage.request();
+  // await Permission.storage.request();
 
   // Initialize notifications
   if (!kIsWeb) {
@@ -89,7 +90,16 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ProgressProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
-        ChangeNotifierProvider(create: (_) => ExamProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, ExamProvider>(
+          create: (context) => ExamProvider(
+            baseUrl: UrlUtils.getBaseUrl(),
+            authProvider: Provider.of<AuthProvider>(context, listen: false),
+          ),
+          update: (context, authProvider, previous) => ExamProvider(
+            baseUrl: UrlUtils.getBaseUrl(),
+            authProvider: authProvider,
+          ),
+        ),
         ChangeNotifierProvider(create: (_) => QuestionProvider()),
       ],
       child: const MyApp(),

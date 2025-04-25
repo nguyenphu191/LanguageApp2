@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:language_app/DuyAnhT/exam/exam_screen.dart';
 import 'package:language_app/DuyAnhT/question_game/questions_screen.dart';
 import 'package:language_app/DuyAnhT/vocab_game/vocabulary_game_screen.dart';
+import 'package:language_app/provider/exam_provider.dart';
 import 'package:language_app/widget/bottom_bar.dart';
 import 'package:language_app/widget/top_bar.dart';
+import 'package:provider/provider.dart';
 
 class TestScreen extends StatefulWidget {
   const TestScreen({super.key});
@@ -16,6 +18,7 @@ class _TestScreenState extends State<TestScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
+
   @override
   void initState() {
     super.initState();
@@ -28,6 +31,10 @@ class _TestScreenState extends State<TestScreen>
       curve: Curves.easeInOut,
     );
     _controller.forward();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ExamProvider>(context, listen: false).fetchExamOverview();
+    });
   }
 
   @override
@@ -40,6 +47,8 @@ class _TestScreenState extends State<TestScreen>
   Widget build(BuildContext context) {
     final pix = (MediaQuery.of(context).size.width / 375).clamp(0.8, 1.2);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    final examProvider = Provider.of<ExamProvider>(context);
 
     return Scaffold(
       backgroundColor: isDarkMode ? const Color(0xFF121212) : Colors.white,
@@ -70,7 +79,24 @@ class _TestScreenState extends State<TestScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Nội dung chính
+                  if (examProvider.isLoading)
+                    Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(20 * pix),
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                  if (examProvider.errorMessage != null)
+                    Padding(
+                      padding: EdgeInsets.all(20 * pix),
+                      child: Text(
+                        'Lỗi: ${examProvider.errorMessage}',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 14 * pix,
+                        ),
+                      ),
+                    ),
                   Expanded(
                     child: SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
@@ -120,7 +146,8 @@ class _TestScreenState extends State<TestScreen>
                             title: 'Câu Đố Thích Ứng',
                             subtitle:
                                 'Câu hỏi cá nhân hóa để kiểm tra kiến thức',
-                            progress: 0.7,
+                            progress: examProvider
+                                .getCompletionPercentage('weeklyExams'),
                             color: const Color(0xFF3B82F6), // Xanh dương
                             onTap: () => Navigator.push(
                               context,
@@ -136,7 +163,8 @@ class _TestScreenState extends State<TestScreen>
                             icon: Icons.extension,
                             title: 'Luyện Từ Vựng',
                             subtitle: 'Trò chơi tương tác để nắm vững từ mới',
-                            progress: 0.4,
+                            progress: examProvider
+                                .getCompletionPercentage('vocabGames'),
                             color: const Color(0xFF10B981), // Xanh lá
                             onTap: () => Navigator.push(
                               context,
@@ -153,7 +181,8 @@ class _TestScreenState extends State<TestScreen>
                             title: 'Đánh Giá Kỹ Năng',
                             subtitle:
                                 'Bài kiểm tra toàn diện để đánh giá trình độ',
-                            progress: 0.2,
+                            progress: examProvider
+                                .getCompletionPercentage('comprehensiveExams'),
                             color: const Color(0xFFD97706), // Cam
                             onTap: () => Navigator.push(
                               context,

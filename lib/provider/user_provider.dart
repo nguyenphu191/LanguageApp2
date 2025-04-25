@@ -45,7 +45,7 @@ class UserProvider with ChangeNotifier {
         _user = UserModel.fromJson(userData);
 
         notifyListeners();
-        if (_user?.email == "admin@gmail.com") {
+        if (_user?.role == "admin") {
           return 2;
         }
         if (_user?.progress.length == 0) {

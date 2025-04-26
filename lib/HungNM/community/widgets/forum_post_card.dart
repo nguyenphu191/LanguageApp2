@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:language_app/Models/post_model.dart';
 import 'package:timeago/timeago.dart' as timeago;
-import '../models/forum_post.dart';
 
 class ForumPostCard extends StatelessWidget {
-  final ForumPost post;
+  final PostModel post;
   final VoidCallback onTap;
   final VoidCallback onAuthorTap;
   final Function(String) onTopicTap;
@@ -39,16 +39,17 @@ class ForumPostCard extends StatelessWidget {
                   InkWell(
                     onTap: onAuthorTap,
                     borderRadius: BorderRadius.circular(20),
-                    child: post.authorAvatar != null
+                    child: post.userAvatar != null
                         ? CircleAvatar(
                             radius: 20,
-                            backgroundImage: CachedNetworkImageProvider(post.authorAvatar!),
+                            backgroundImage:
+                                CachedNetworkImageProvider(post.userAvatar!),
                           )
                         : CircleAvatar(
                             radius: 20,
                             backgroundColor: Colors.grey.shade300,
                             child: Text(
-                              post.authorName.substring(0, 1).toUpperCase(),
+                              post.userName ?? 'Unknown',
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black54,
@@ -62,7 +63,7 @@ class ForumPostCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          post.authorName,
+                          post.userName ?? 'Unknown',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
@@ -70,7 +71,8 @@ class ForumPostCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          timeago.format(post.postedTime, locale: 'vi'),
+                          timeago.format(post.createdAt ?? DateTime.now(),
+                              locale: 'vi'),
                           style: TextStyle(
                             color: Colors.grey.shade600,
                             fontSize: 12,
@@ -125,7 +127,7 @@ class ForumPostCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Text(
-                post.title,
+                post.title ?? 'No Title',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -139,7 +141,7 @@ class ForumPostCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Text(
-                post.content,
+                post.content ?? 'No content available',
                 style: TextStyle(color: Colors.grey.shade800),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
@@ -147,38 +149,40 @@ class ForumPostCard extends StatelessWidget {
             ),
 
             // Post image (if any)
-            if (post.imageUrls.isNotEmpty)
+            if (post.imageUrls!.isNotEmpty)
               Container(
                 height: 180,
                 width: double.infinity,
                 margin: const EdgeInsets.symmetric(vertical: 8),
-                child: post.imageUrls.length == 1
+                child: post.imageUrls?.length == 1
                     ? CachedNetworkImage(
-                        imageUrl: post.imageUrls.first,
+                        imageUrl: post.imageUrls!.first,
                         fit: BoxFit.cover,
                         placeholder: (context, url) => Center(
                           child: CircularProgressIndicator(
                             color: Theme.of(context).primaryColor,
                           ),
                         ),
-                        errorWidget: (context, url, error) => const Icon(Icons.error),
+                        errorWidget: (context, url, error) =>
+                            const Icon(Icons.error),
                       )
                     : ListView.builder(
                         scrollDirection: Axis.horizontal,
-                        itemCount: post.imageUrls.length,
+                        itemCount: post.imageUrls?.length,
                         itemBuilder: (context, index) {
                           return Container(
                             width: 160,
                             margin: const EdgeInsets.only(left: 8),
                             child: CachedNetworkImage(
-                              imageUrl: post.imageUrls[index],
+                              imageUrl: post.imageUrls![index],
                               fit: BoxFit.cover,
                               placeholder: (context, url) => Center(
                                 child: CircularProgressIndicator(
                                   color: Theme.of(context).primaryColor,
                                 ),
                               ),
-                              errorWidget: (context, url, error) => const Icon(Icons.error),
+                              errorWidget: (context, url, error) =>
+                                  const Icon(Icons.error),
                             ),
                           );
                         },
@@ -186,17 +190,19 @@ class ForumPostCard extends StatelessWidget {
               ),
 
             // Topics/tags
-            if (post.topics.isNotEmpty)
+            if (post.tags!.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Wrap(
                   spacing: 6,
                   runSpacing: 6,
-                  children: post.topics.map((topic) {
+                  children: post.tags!.map((topic) {
                     return InkWell(
                       onTap: () => onTopicTap(topic),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.blue.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(16),

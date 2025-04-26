@@ -25,9 +25,7 @@ class _TopicwidgetState extends State<Topicwidget> {
       margin: EdgeInsets.symmetric(horizontal: 8 * pix, vertical: 4 * pix),
       width: 180 * pix,
       decoration: BoxDecoration(
-        color: widget.topic.isDone
-            ? const Color.fromARGB(255, 231, 255, 255).withOpacity(0.5)
-            : Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24 * pix),
         boxShadow: [
           BoxShadow(

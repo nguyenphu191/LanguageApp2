@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:language_app/Models/post_model.dart';
 import 'package:timeago/timeago.dart' as timeago;
-import './models/forum_post.dart';
 import '../profile/profile_sceen.dart';
 import './topic_page.dart';
 
 class ForumDetailPage extends StatefulWidget {
-  final ForumPost post;
+  final PostModel post;
 
   const ForumDetailPage({Key? key, required this.post}) : super(key: key);
 
@@ -15,7 +15,7 @@ class ForumDetailPage extends StatefulWidget {
 }
 
 class _ForumDetailPageState extends State<ForumDetailPage> {
-  late ForumPost _post;
+  late PostModel _post;
   final TextEditingController _commentController = TextEditingController();
   List<Map<String, dynamic>> _comments = []; // Mock comments
 
@@ -39,11 +39,11 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
     ];
   }
 
-  void _likePost() {
-    setState(() {
-      _post = _post.copyWith(likes: _post.likes + 1);
-    });
-  }
+  // void _likePost() {
+  //   setState(() {
+  //     _post = _post.copyWith(likes: _post.likes + 1);
+  //   });
+  // }
 
   void _addComment() {
     if (_commentController.text.isNotEmpty) {
@@ -54,7 +54,7 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
           'time': DateTime.now(),
           'helpful': 0,
         });
-        _post = _post.copyWith(comments: _post.comments + 1);
+        // _post = _post.copyWith(comments: _post.comments + 1);
         _commentController.clear();
       });
     }
@@ -84,7 +84,7 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_post.title),
+        title: Text(_post.title ?? 'Untitled'),
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
@@ -118,14 +118,11 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
                 children: [
                   GestureDetector(
                     onTap: () => _navigateToUserProfile(
-                        'author-${_post.id}', _post.authorName),
+                        'author-${_post.id}', _post.userName ?? ''),
                     child: CircleAvatar(
                       radius: 20,
-                      backgroundImage: _post.authorAvatar != null
-                          ? CachedNetworkImageProvider(_post.authorAvatar!)
-                          : null,
-                      child: _post.authorAvatar == null
-                          ? Text(_post.authorName[0].toUpperCase())
+                      backgroundImage: _post.userAvatar != null
+                          ? CachedNetworkImageProvider(_post.userAvatar!)
                           : null,
                     ),
                   ),
@@ -134,10 +131,10 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(_post.authorName,
+                        Text(_post.userName ?? 'Unknown User',
                             style:
                                 const TextStyle(fontWeight: FontWeight.bold)),
-                        Text(timeago.format(_post.postedTime, locale: 'vi'),
+                        Text(timeago.format(_post.createdAt!, locale: 'vi'),
                             style: TextStyle(color: Colors.grey.shade600)),
                       ],
                     ),
@@ -148,22 +145,23 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
             // Content
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(_post.content, style: const TextStyle(fontSize: 16)),
+              child: Text(_post.content ?? "",
+                  style: const TextStyle(fontSize: 16)),
             ),
             // Images
-            if (_post.imageUrls.isNotEmpty)
+            if (_post.imageUrls!.isNotEmpty)
               SizedBox(
                 height: 200,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: _post.imageUrls.length,
+                  itemCount: _post.imageUrls!.length,
                   itemBuilder: (context, index) => GestureDetector(
                     onTap: () {
                       showDialog(
                         context: context,
                         builder: (_) => Dialog(
                           child: CachedNetworkImage(
-                              imageUrl: _post.imageUrls[index],
+                              imageUrl: _post.imageUrls![index],
                               fit: BoxFit.contain),
                         ),
                       );
@@ -171,7 +169,7 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
                     child: Padding(
                       padding: const EdgeInsets.all(8),
                       child: CachedNetworkImage(
-                          imageUrl: _post.imageUrls[index],
+                          imageUrl: _post.imageUrls![index],
                           width: 200,
                           fit: BoxFit.cover),
                     ),
@@ -183,7 +181,7 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
               padding: const EdgeInsets.all(16),
               child: Wrap(
                 spacing: 8,
-                children: _post.topics
+                children: _post.tags!
                     .map((topic) => GestureDetector(
                           onTap: () => _navigateToTopic(topic),
                           child: Chip(label: Text('#$topic')),
@@ -197,7 +195,7 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
               child: Row(
                 children: [
                   IconButton(
-                      icon: const Icon(Icons.thumb_up), onPressed: _likePost),
+                      icon: const Icon(Icons.thumb_up), onPressed: () {}),
                   Text('${_post.likes}'),
                   const SizedBox(width: 16),
                   Text('${_post.comments} bình luận'),

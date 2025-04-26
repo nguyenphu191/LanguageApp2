@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:language_app/Models/post_model.dart';
 import 'package:language_app/PhuNV/Notification/notification_screen.dart';
+import 'package:language_app/provider/post_provider.dart';
 import 'package:language_app/widget/top_bar.dart';
+import 'package:provider/provider.dart';
 import 'forum_detail_page.dart';
 import 'create_post_page.dart';
 import '../profile/profile_sceen.dart';
 import 'topic_page.dart';
 import 'search_page.dart';
-import './models/forum_post.dart';
 import './widgets/forum_post_card.dart';
 
 class CommunityForumPage extends StatefulWidget {
@@ -21,6 +23,7 @@ class _CommunityForumPageState extends State<CommunityForumPage>
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   String _selectedFilter = 'Tất cả';
+  bool _isLoading = false;
   final List<String> _filters = [
     'Tất cả',
     'Ngữ pháp',
@@ -30,72 +33,37 @@ class _CommunityForumPageState extends State<CommunityForumPage>
     'Viết',
     'Khác'
   ];
-
-  final List<ForumPost> _mockPosts = [
-    ForumPost(
-      id: '1',
-      title: 'Cách học từ vựng hiệu quả',
-      content:
-          'Tôi muốn chia sẻ phương pháp học từ vựng hiệu quả mà tôi đã áp dụng và cải thiện vốn từ của mình...',
-      authorName: 'Mai Anh',
-      authorAvatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-      postedTime: DateTime.now().subtract(const Duration(hours: 2)),
-      imageUrls: ['https://picsum.photos/id/1/800/400'],
-      likes: 24,
-      comments: 8,
-      topics: ['Từ vựng', 'Học tập'],
-    ),
-    ForumPost(
-      id: '2',
-      title: 'Kinh nghiệm luyện thi IELTS',
-      content:
-          'Sau một thời gian dài ôn luyện, tôi đã đạt được band điểm 7.5 IELTS. Hôm nay tôi muốn chia sẻ hành trình và kinh nghiệm của mình...',
-      authorName: 'Quang Minh',
-      authorAvatar: 'https://randomuser.me/api/portraits/men/32.jpg',
-      postedTime: DateTime.now().subtract(const Duration(days: 1)),
-      imageUrls: ['https://picsum.photos/id/20/800/400'],
-      likes: 56,
-      comments: 20,
-      topics: ['IELTS', 'Kinh nghiệm'],
-    ),
-    ForumPost(
-      id: '3',
-      title: 'Có nên học ngữ pháp trước khi tập nói?',
-      content:
-          'Tôi là người mới bắt đầu học tiếng Anh và đang phân vân giữa việc nên tập trung vào ngữ pháp trước hay nên luyện nói trước...',
-      authorName: 'Thu Hà',
-      authorAvatar: 'https://randomuser.me/api/portraits/women/22.jpg',
-      postedTime: DateTime.now().subtract(const Duration(days: 2)),
-      likes: 12,
-      comments: 32,
-      topics: ['Ngữ pháp', 'Nói'],
-    ),
-    ForumPost(
-      id: '4',
-      title: 'Chia sẻ tài liệu học tiếng Anh miễn phí',
-      content:
-          'Chào mọi người, tôi muốn chia sẻ một số tài liệu học tiếng Anh miễn phí mà tôi thấy rất hữu ích...',
-      authorName: 'Đức Thắng',
-      authorAvatar: 'https://randomuser.me/api/portraits/men/62.jpg',
-      postedTime: DateTime.now().subtract(const Duration(days: 3)),
-      imageUrls: [
-        'https://picsum.photos/id/15/800/400',
-        'https://picsum.photos/id/25/800/400'
-      ],
-      likes: 78,
-      comments: 14,
-      topics: ['Tài liệu', 'Miễn phí'],
-    ),
-  ];
-
-  List<ForumPost> _filteredPosts = [];
+  List<PostModel> _mockPosts = [];
+  List<PostModel> _filteredPosts = [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _filteredPosts = List.from(_mockPosts);
+
     _tabController.addListener(_filterPosts);
+    WidgetsBinding.instance.addPostFrameCallback((_) {});
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final postProvider = Provider.of<PostProvider>(context, listen: false);
+
+    try {
+      await postProvider.fetchPosts();
+    } catch (e) {
+      // Xử lý lỗi nếu cần
+      print('Error loading topics: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+        _mockPosts = postProvider.posts;
+        _filteredPosts = List.from(_mockPosts);
+      });
+    }
   }
 
   @override
@@ -111,15 +79,15 @@ class _CommunityForumPageState extends State<CommunityForumPage>
         _filteredPosts = List.from(_mockPosts);
       } else {
         _filteredPosts = _mockPosts
-            .where((post) => post.topics.contains(_selectedFilter))
+            .where((post) => post.tags?.contains(_selectedFilter) ?? false)
             .toList();
       }
 
-      if (_tabController.index == 1) {
-        _filteredPosts.sort((a, b) => b.likes.compareTo(a.likes));
-      } else if (_tabController.index == 2) {
-        // Logic cho tab "Đang theo dõi"
-      }
+      // if (_tabController.index == 1) {
+      //   _filteredPosts.sort((a, b) => b.likes.compareTo(a.likes));
+      // } else if (_tabController.index == 2) {
+      //   // Logic cho tab "Đang theo dõi"
+      // }
     });
   }
 
@@ -130,7 +98,7 @@ class _CommunityForumPageState extends State<CommunityForumPage>
     );
   }
 
-  void _navigateToPostDetail(ForumPost post) {
+  void _navigateToPostDetail(PostModel post) {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => ForumDetailPage(post: post)),
@@ -299,7 +267,7 @@ class _CommunityForumPageState extends State<CommunityForumPage>
                   post: post,
                   onTap: () => _navigateToPostDetail(post),
                   onAuthorTap: () => _navigateToUserProfile(
-                      'author-${post.id}', post.authorName),
+                      'author-${post.id}', post.userName ?? ''),
                   onTopicTap: (topic) => _navigateToTopicPage(topic),
                 );
               },

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:language_app/Models/post_model.dart';
 import './forum_detail_page.dart';
-import './models/forum_post.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({Key? key}) : super(key: key);
@@ -11,17 +11,17 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
-  List<ForumPost> _searchResults = [];
+  List<PostModel> _searchResults = [];
 
   void _search(String query) {
     // Mock search logic
     final allPosts = [
-      ForumPost(id: '1', title: 'Post 1', content: 'Content 1', authorName: 'User', postedTime: DateTime.now()),
+      PostModel(id: '1', title: 'Post 1', content: 'Content 1',),
     ];
     setState(() {
       _searchResults = allPosts.where((post) =>
-          post.title.toLowerCase().contains(query.toLowerCase()) ||
-          post.content.toLowerCase().contains(query.toLowerCase())).toList();
+          post.title!.toLowerCase().contains(query.toLowerCase()) ||
+          post.content!.toLowerCase().contains(query.toLowerCase())).toList();
     });
   }
 
@@ -38,8 +38,8 @@ class _SearchPageState extends State<SearchPage> {
       body: ListView.builder(
         itemCount: _searchResults.length,
         itemBuilder: (context, index) => ListTile(
-          title: Text(_searchResults[index].title),
-          subtitle: Text(_searchResults[index].content, maxLines: 1, overflow: TextOverflow.ellipsis),
+          title: Text(_searchResults[index].title ?? 'No Title'),
+          subtitle: Text(_searchResults[index].content ?? 'No Content', maxLines: 1, overflow: TextOverflow.ellipsis),
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ForumDetailPage(post: _searchResults[index]))),
         ),
       ),

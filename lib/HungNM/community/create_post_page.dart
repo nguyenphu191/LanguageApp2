@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import './models/forum_post.dart';
+import 'package:language_app/Models/post_model.dart';
 import './forum_detail_page.dart';
 
 class CreatePostPage extends StatefulWidget {
@@ -26,17 +26,16 @@ class _CreatePostPageState extends State<CreatePostPage> {
   }
 
   void _submitPost() {
-    if (_titleController.text.isNotEmpty && _contentController.text.isNotEmpty) {
-      final newPost = ForumPost(
+    if (_titleController.text.isNotEmpty &&
+        _contentController.text.isNotEmpty) {
+      final newPost = PostModel(
         id: DateTime.now().toString(), // Thay bằng ID từ server
         title: _titleController.text,
         content: _contentController.text,
-        authorName: _isAnonymous ? 'Ẩn danh' : 'Current User', // Thay bằng user thực tế
-        postedTime: DateTime.now(),
-        topics: _topics,
       );
       Navigator.pop(context);
-      Navigator.push(context, MaterialPageRoute(builder: (_) => ForumDetailPage(post: newPost)));
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => ForumDetailPage(post: newPost)));
     }
   }
 
@@ -48,7 +47,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
         actions: [
           TextButton(
             onPressed: _submitPost,
-            child: const Text('Đăng bài', style: TextStyle(color: Colors.white)),
+            child:
+                const Text('Đăng bài', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -78,7 +78,10 @@ class _CreatePostPageState extends State<CreatePostPage> {
                 IconButton(icon: const Icon(Icons.add), onPressed: _addTopic),
               ],
             ),
-            Wrap(spacing: 8, children: _topics.map((topic) => Chip(label: Text(topic))).toList()),
+            Wrap(
+                spacing: 8,
+                children:
+                    _topics.map((topic) => Chip(label: Text(topic))).toList()),
             CheckboxListTile(
               title: const Text('Đăng ẩn danh'),
               value: _isAnonymous,

@@ -5,6 +5,7 @@ import 'package:language_app/provider/exam_provider.dart';
 import 'package:language_app/provider/exercise_provider.dart';
 import 'package:language_app/provider/language_provider.dart';
 import 'package:language_app/provider/notification_provider.dart';
+import 'package:language_app/provider/post_provider.dart';
 import 'package:language_app/provider/progress_provider.dart';
 import 'package:language_app/provider/question_provider.dart';
 import 'package:language_app/provider/theme_provider.dart';
@@ -90,6 +91,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ProgressProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => PostProvider()),
         ChangeNotifierProxyProvider<AuthProvider, ExamProvider>(
           create: (context) => ExamProvider(
             baseUrl: UrlUtils.getBaseUrl(),

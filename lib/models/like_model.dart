@@ -10,9 +10,9 @@ class LikeModel {
   });
 
   LikeModel.fromJson(Map<String, dynamic> json) {
-    id = json['id'];
-    userId = json['user_id'];
-    postId = json['post_id'];
+    id = json['id'].toString() ?? "";
+    userId = json['userId'].toString() ?? "";
+    postId = json['postId'].toString() ?? "";
   }
 
   Map<String, dynamic> toJson() {

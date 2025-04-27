@@ -33,27 +33,41 @@ class PostModel {
   });
 
   PostModel.fromJson(Map<String, dynamic> json) {
-    id = json['id'].toString() ?? "";
+    id = json['id'].toString();
     title = json['title'] ?? "";
-    content = json['content'];
-    userId = json['userId'].toString() ?? "";
-    languageId = json['languageId'].toString() ?? "";
-    imageUrls = json['imageUrls'] ?? [];
-    userName = (json['user']['firstName'] + json['user']['lastName']) ?? "";
-    userAvatar = json['user']['profileImageUrl'] ?? "";
-    tags = json['tags']?.cast<String>() ?? [];
-    likes =
-        (json['likes'] as List?)?.map((e) => LikeModel.fromJson(e)).toList() ??
-            [];
-    comments = (json['comments'] as List?)
-            ?.map((e) => CommentModel.fromJson(e))
-            .toList() ??
-        [];
+    content = json['content'] ?? "";
+    userId = json['userId'].toString();
+    languageId = json['languageId'].toString();
 
-    createdAt = DateTime.parse(json['created_at']);
-    updatedAt = DateTime.parse(json['updated_at']);
+    // Xử lý dữ liệu người dùng đúng cách
+    if (json['user'] != null) {
+      userName = "${json['user']['firstName']} ${json['user']['lastName']}";
+      userAvatar = json['user']['profileImageUrl'];
+    } else {
+      userName = "";
+      userAvatar = "";
+    }
+
+    // Xử lý các mảng
+    imageUrls = List<String>.from(json['imageUrls'] ?? []);
+    tags = json['tags'] != null ? List<String>.from(json['tags']) : [];
+
+    // Xử lý comments và likes
+    comments = json['comments'] != null
+        ? List<CommentModel>.from(
+            json['comments'].map((x) => CommentModel.fromJson(x)))
+        : [];
+
+    likes = json['likes'] != null
+        ? List<LikeModel>.from(json['likes'].map((x) => LikeModel.fromJson(x)))
+        : [];
+
+    // Xử lý ngày tháng
+    createdAt =
+        json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null;
+    updatedAt =
+        json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null;
   }
-
   Map<String, dynamic> toJson() {
     return {
       'id': id,

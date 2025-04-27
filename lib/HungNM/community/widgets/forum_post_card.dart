@@ -1,24 +1,83 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:language_app/Models/post_model.dart';
+import 'package:language_app/PhuNV/widget/Network_Img.dart';
+import 'package:language_app/provider/post_provider.dart';
+import 'package:language_app/provider/user_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-class ForumPostCard extends StatelessWidget {
-  final PostModel post;
-  final VoidCallback onTap;
-  final VoidCallback onAuthorTap;
-  final Function(String) onTopicTap;
-
+class ForumPostCard extends StatefulWidget {
   const ForumPostCard({
-    Key? key,
+    super.key,
     required this.post,
     required this.onTap,
-    required this.onAuthorTap,
-    required this.onTopicTap,
-  }) : super(key: key);
+  });
+  final PostModel post;
+  final VoidCallback onTap;
+  @override
+  State<ForumPostCard> createState() => _ForumPostCardState();
+}
+
+class _ForumPostCardState extends State<ForumPostCard> {
+  bool _isLiking = false;
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  Future<void> _likePost() async {
+    // Tránh double click
+    if (_isLiking) return;
+
+    setState(() {
+      _isLiking = true;
+    });
+
+    try {
+      final userId = Provider.of<UserProvider>(context, listen: false).user?.id;
+      if (widget.post.likes!.any((like) => like.userId == userId)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bạn đã thích bài viết này')),
+        );
+        setState(() {
+          _isLiking = false;
+        });
+        return;
+      }
+      final postProvider = Provider.of<PostProvider>(context, listen: false);
+      final success = await postProvider.likePost(int.parse(widget.post.id!));
+
+      if (success) {
+        setState(() {
+          _isLiking = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã thích bài viết')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không thể thích bài viết')),
+        );
+        setState(() {
+          _isLiking = false;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi: ${e.toString()}')),
+      );
+      setState(() {
+        _isLiking = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final pix = size.width / 375;
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
@@ -26,36 +85,30 @@ class ForumPostCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
-        onTap: onTap,
+        onTap: widget.onTap,
         borderRadius: BorderRadius.circular(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Author info and time
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12 * pix),
               child: Row(
                 children: [
                   InkWell(
-                    onTap: onAuthorTap,
                     borderRadius: BorderRadius.circular(20),
-                    child: post.userAvatar != null
-                        ? CircleAvatar(
-                            radius: 20,
-                            backgroundImage:
-                                CachedNetworkImageProvider(post.userAvatar!),
-                          )
-                        : CircleAvatar(
-                            radius: 20,
-                            backgroundColor: Colors.grey.shade300,
-                            child: Text(
-                              post.userName ?? 'Unknown',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black54,
-                              ),
-                            ),
-                          ),
+                    child: ClipOval(
+                        child: (widget.post.userAvatar != null &&
+                                widget.post.userAvatar!.isNotEmpty)
+                            ? NetworkImageWidget(
+                                url: widget.post.userAvatar!,
+                                width: 40 * pix,
+                                height: 40 * pix)
+                            : NetworkImageWidget(
+                                url:
+                                    "https://static.vecteezy.com/system/resources/thumbnails/009/734/564/small_2x/default-avatar-profile-icon-of-social-media-user-vector.jpg",
+                                width: 40 * pix,
+                                height: 40 * pix)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -63,7 +116,7 @@ class ForumPostCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          post.userName ?? 'Unknown',
+                          widget.post.userName ?? 'Unknown',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
@@ -71,8 +124,7 @@ class ForumPostCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          timeago.format(post.createdAt ?? DateTime.now(),
-                              locale: 'vi'),
+                          timeago.format(widget.post.createdAt!, locale: 'vi'),
                           style: TextStyle(
                             color: Colors.grey.shade600,
                             fontSize: 12,
@@ -127,7 +179,7 @@ class ForumPostCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Text(
-                post.title ?? 'No Title',
+                widget.post.title ?? 'No Title',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -141,7 +193,7 @@ class ForumPostCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Text(
-                post.content ?? 'No content available',
+                widget.post.content ?? 'No content available',
                 style: TextStyle(color: Colors.grey.shade800),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
@@ -149,14 +201,14 @@ class ForumPostCard extends StatelessWidget {
             ),
 
             // Post image (if any)
-            if (post.imageUrls!.isNotEmpty)
+            if (widget.post.imageUrls!.isNotEmpty)
               Container(
                 height: 180,
                 width: double.infinity,
                 margin: const EdgeInsets.symmetric(vertical: 8),
-                child: post.imageUrls?.length == 1
+                child: widget.post.imageUrls?.length == 1
                     ? CachedNetworkImage(
-                        imageUrl: post.imageUrls!.first,
+                        imageUrl: widget.post.imageUrls!.first,
                         fit: BoxFit.cover,
                         placeholder: (context, url) => Center(
                           child: CircularProgressIndicator(
@@ -168,13 +220,13 @@ class ForumPostCard extends StatelessWidget {
                       )
                     : ListView.builder(
                         scrollDirection: Axis.horizontal,
-                        itemCount: post.imageUrls?.length,
+                        itemCount: widget.post.imageUrls?.length,
                         itemBuilder: (context, index) {
                           return Container(
                             width: 160,
                             margin: const EdgeInsets.only(left: 8),
                             child: CachedNetworkImage(
-                              imageUrl: post.imageUrls![index],
+                              imageUrl: widget.post.imageUrls![index],
                               fit: BoxFit.cover,
                               placeholder: (context, url) => Center(
                                 child: CircularProgressIndicator(
@@ -190,16 +242,15 @@ class ForumPostCard extends StatelessWidget {
               ),
 
             // Topics/tags
-            if (post.tags!.isNotEmpty)
+            if (widget.post.tags!.isNotEmpty)
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Wrap(
                   spacing: 6,
                   runSpacing: 6,
-                  children: post.tags!.map((topic) {
+                  children: widget.post.tags!.map((topic) {
                     return InkWell(
-                      onTap: () => onTopicTap(topic),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
@@ -225,51 +276,45 @@ class ForumPostCard extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               child: Row(
                 children: [
-                  // Like button
-                  TextButton.icon(
-                    onPressed: () {
-                      // Add like logic
-                    },
-                    icon: Icon(
-                      Icons.thumb_up_outlined,
-                      size: 18,
-                      color: Colors.grey.shade700,
-                    ),
-                    label: Text(
-                      post.likes.toString(),
-                      style: TextStyle(color: Colors.grey.shade700),
-                    ),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                  ),
+                  _isLiking
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.blue,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : TextButton.icon(
+                          onPressed: () {
+                            _likePost();
+                          },
+                          icon: Icon(
+                            Icons.thumb_up_outlined,
+                            size: 18,
+                            color: Colors.grey.shade700,
+                          ),
+                          label: Text(
+                            widget.post.likes!.length.toString(),
+                            style: TextStyle(color: Colors.grey.shade700),
+                          ),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                        ),
                   // Comment button
                   TextButton.icon(
-                    onPressed: onTap,
+                    onPressed: widget.onTap,
                     icon: Icon(
                       Icons.chat_bubble_outline,
                       size: 18,
                       color: Colors.grey.shade700,
                     ),
                     label: Text(
-                      post.comments.toString(),
+                      widget.post.comments!.length.toString(),
                       style: TextStyle(color: Colors.grey.shade700),
                     ),
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                     ),
-                  ),
-                  const Spacer(),
-                  // Share button
-                  IconButton(
-                    icon: Icon(
-                      Icons.share_outlined,
-                      size: 18,
-                      color: Colors.grey.shade700,
-                    ),
-                    onPressed: () {
-                      // Add share logic
-                    },
                   ),
                 ],
               ),

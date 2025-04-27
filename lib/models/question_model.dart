@@ -1,6 +1,5 @@
 class QuestionModel {
   int id;
-
   String question;
   List<String> options;
   String answer;

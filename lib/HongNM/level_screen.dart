@@ -140,57 +140,26 @@ class _LevelscreenState extends State<Levelscreen> {
               child: Consumer<ExerciseProvider>(
                 builder: (context, exerciseProvider, child) {
                   // Lấy danh sách bài tập theo type
-                  List<ExerciseModel> exercises;
-                  switch (widget.type) {
-                    case 'Ngữ pháp':
-                      exercises = exerciseProvider.grammarExercises;
-                      break;
-                    case 'Nghe':
-                      exercises = exerciseProvider.listeningExercises;
-                      break;
-                    case 'Phát âm':
-                      exercises = exerciseProvider.speakingExercises;
-                      break;
-                    default:
-                      exercises = [];
-                  }
+                  List<ExerciseModel> exercises = [];
+                  // switch (widget.type) {
+                  //   case 'Ngữ pháp':
+                  //     exercises = exerciseProvider.grammarExercises;
+                  //     break;
+                  //   case 'Nghe':
+                  //     exercises = exerciseProvider.listeningExercises;
+                  //     break;
+                  //   case 'Phát âm':
+                  //     exercises = exerciseProvider.speakingExercises;
+                  //     break;
+                  //   default:
+                  //     exercises = [];
+                  // }
 
                   // Kiểm tra trạng thái tải
                   if (exerciseProvider.isLoading) {
                     return Center(
                       child: CircularProgressIndicator(
                         color: _getTypeColor(),
-                      ),
-                    );
-                  }
-
-                  // Kiểm tra lỗi
-                  if (exerciseProvider.error != null) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            color: Colors.red,
-                            size: 50 * pix,
-                          ),
-                          SizedBox(height: 16 * pix),
-                          Text(
-                            exerciseProvider.error!,
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontSize: 16 * pix,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: 16 * pix),
-                          ElevatedButton(
-                            onPressed: () =>
-                                exerciseProvider.fetchExercises(widget.type),
-                            child: Text('Thử lại'),
-                          )
-                        ],
                       ),
                     );
                   }

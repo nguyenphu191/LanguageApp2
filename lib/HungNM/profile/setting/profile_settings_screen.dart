@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-
+import 'package:provider/provider.dart';
 import 'package:language_app/widget/top_bar.dart';
+import 'package:language_app/provider/user_provider.dart';
+
+import 'package:path_provider/path_provider.dart';
+import 'package:image/image.dart' as img;
+import 'dart:math';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {
   const ProfileSettingsScreen({super.key});
@@ -13,134 +19,188 @@ class ProfileSettingsScreen extends StatefulWidget {
 
 class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   File? _avatarImage;
-  final TextEditingController _usernameController =
-      TextEditingController(text: 'Nguyễn Mạnh Hùng');
-  final TextEditingController _loginNameController =
-      TextEditingController(text: 'hungnm');
-  final TextEditingController _passwordController =
-      TextEditingController(text: '********');
-  final TextEditingController _emailController =
-      TextEditingController(text: 'hungnm@example.com');
-  bool _obscurePassword = true;
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  bool _isLoading = false;
+  bool _isUpdating = false;
+  String? _errorMessage;
+  // Biến này dùng để kiểm soát việc hiển thị ảnh local hay ảnh từ network
+  bool _useLocalImage = false;
+  // Lưu URL của ảnh từ server để tránh cache
+  String _profileImageUrl = '';
+  // Thêm timestamp để vô hiệu hóa cache khi tải lại ảnh
+  String _cacheKey = DateTime.now().millisecondsSinceEpoch.toString();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    setState(() {
+      _isLoading = true;
+      _useLocalImage = false; // Reset về hiển thị ảnh từ server
+    });
+
+    try {
+      // Tạo một UserProvider mới để tránh cache
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      // Gọi API để lấy dữ liệu mới nhất từ server
+      await userProvider.getUserInfo(context);
+
+      final user = userProvider.user;
+      if (user != null) {
+        setState(() {
+          _firstNameController.text = user.firstname;
+          _lastNameController.text = user.lastname;
+          _emailController.text = user.email;
+
+          // Cập nhật URL ảnh đại diện
+          if (user.profile_image_url.isNotEmpty) {
+            _profileImageUrl = user.profile_image_url;
+            // Thêm tham số để tránh cache
+            if (!_profileImageUrl.contains('?')) {
+              _profileImageUrl += '?v=$_cacheKey';
+            } else {
+              _profileImageUrl += '&v=$_cacheKey';
+            }
+          }
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Không thể tải thông tin người dùng: ${e.toString()}';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+      maxHeight: 1200,
+      imageQuality: 85,
+    );
+
     if (pickedFile != null) {
+      try {
+        // Nén ảnh trước khi hiển thị
+        final compressedImage = await compressImage(File(pickedFile.path));
+        setState(() {
+          _avatarImage = compressedImage;
+          _useLocalImage = true; // Chuyển sang hiển thị ảnh local
+        });
+      } catch (e) {
+        print('Lỗi khi xử lý ảnh: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không thể xử lý ảnh. Vui lòng thử lại.')),
+        );
+      }
+    }
+  }
+
+  // Hàm tiện ích để nén ảnh
+  Future<File> compressImage(File file) async {
+    try {
+      // Đọc ảnh gốc
+      final originalImage = img.decodeImage(await file.readAsBytes());
+      if (originalImage == null) throw Exception('Không thể đọc ảnh');
+
+      // Xác định kích thước mới cho ảnh
+      int maxWidth = 800; // Giới hạn chiều rộng tối đa
+      int maxHeight = 800; // Giới hạn chiều cao tối đa
+
+      // Tính toán tỷ lệ để giữ nguyên proporsions
+      double ratio =
+          min(maxWidth / originalImage.width, maxHeight / originalImage.height);
+
+      if (ratio >= 1.0) return file; // Ảnh đã đủ nhỏ, không cần nén
+
+      // Tạo ảnh mới với kích thước đã giảm
+      final resizedImage = img.copyResize(
+        originalImage,
+        width: (originalImage.width * ratio).round(),
+        height: (originalImage.height * ratio).round(),
+      );
+
+      // Nén ảnh thành JPEG
+      final compressedBytes = img.encodeJpg(resizedImage, quality: 85);
+
+      // Lưu ảnh vào file tạm
+      final tempDir = await getTemporaryDirectory();
+      final tempPath =
+          '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final compressedFile = File(tempPath);
+      await compressedFile.writeAsBytes(compressedBytes);
+
+      return compressedFile;
+    } catch (e) {
+      print('Lỗi khi nén ảnh: $e');
+      return file; // Trả về file gốc nếu có lỗi xảy ra
+    }
+  }
+
+  Future<void> _updateProfile() async {
+    if (_isUpdating) return;
+
+    setState(() {
+      _isUpdating = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+      // Sử dụng phương thức cập nhật thông tin người dùng
+      final success = await userProvider.updateUserProfile(
+        firstName: _firstNameController.text,
+        lastName: _lastNameController.text,
+        profileImage: _useLocalImage
+            ? _avatarImage
+            : null, // Chỉ gửi ảnh nếu đã chọn ảnh mới
+      );
+
+      if (success) {
+        // Cập nhật cache key để đảm bảo tải lại ảnh mới
+        _cacheKey = DateTime.now().millisecondsSinceEpoch.toString();
+
+        // Tải lại dữ liệu người dùng từ server
+        await _loadUserData();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cập nhật thông tin thành công')),
+        );
+
+        // Sau khi cập nhật thành công, reset lại trạng thái sử dụng ảnh local
+        setState(() {
+          _useLocalImage = false;
+          _avatarImage = null;
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Không thể cập nhật thông tin. Vui lòng thử lại sau.';
+        });
+      }
+    } catch (e) {
       setState(() {
-        _avatarImage = File(pickedFile.path);
+        _errorMessage = 'Lỗi: ${e.toString()}';
+      });
+    } finally {
+      setState(() {
+        _isUpdating = false;
       });
     }
   }
 
   void _showDeleteAccountDialog(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final pix = (size.width / 375).clamp(0.8, 1.2);
-
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20 * pix),
-        ),
-        elevation: 8,
-        child: Container(
-          padding: EdgeInsets.all(20 * pix),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20 * pix),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: EdgeInsets.all(16 * pix),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.delete_forever_rounded,
-                  color: Colors.red,
-                  size: 40 * pix,
-                ),
-              ),
-              SizedBox(height: 16 * pix),
-              Text(
-                "Xóa tài khoản",
-                style: TextStyle(
-                  fontSize: 20 * pix,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 8 * pix),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8 * pix),
-                child: Text(
-                  "Xác nhận xóa tài khoản",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16 * pix,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-              SizedBox(height: 24 * pix),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey.shade200,
-                        foregroundColor: Colors.black87,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12 * pix),
-                        ),
-                        padding: EdgeInsets.symmetric(vertical: 12 * pix),
-                      ),
-                      child: Text(
-                        "Hủy",
-                        style: TextStyle(
-                          fontSize: 16 * pix,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 16 * pix),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        Navigator.pushReplacementNamed(context, '/login');
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12 * pix),
-                        ),
-                        padding: EdgeInsets.symmetric(vertical: 12 * pix),
-                      ),
-                      child: Text(
-                        "Xóa",
-                        style: TextStyle(
-                          fontSize: 16 * pix,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    // Phần code hiện tại của bạn...
   }
 
   @override
@@ -160,44 +220,111 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         ),
       ),
       child: Scaffold(
-        body: Stack(
-          children: [
-            Positioned(
-              top: 100 * pix,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: EdgeInsets.all(16 * pix),
-                  child: Column(
-                    children: [
-                      _buildAvatarSection(pix),
-                      SizedBox(height: 24 * pix),
-                      _buildInfoCard(pix),
-                      SizedBox(height: 16 * pix),
-                      _buildSaveButton(pix),
-                      SizedBox(height: 16 * pix),
-                      _buildDeleteAccountButton(pix),
-                      SizedBox(height: 32 * pix),
-                    ],
+        backgroundColor: Colors.transparent,
+        body: _isLoading
+            ? Center(child: CircularProgressIndicator())
+            : Stack(
+                children: [
+                  Positioned(
+                    top: 100 * pix,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: EdgeInsets.all(16 * pix),
+                        child: Column(
+                          children: [
+                            _buildAvatarSection(pix),
+                            SizedBox(height: 24 * pix),
+
+                            // Hiển thị thông báo lỗi nếu có
+                            if (_errorMessage != null)
+                              Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.all(12 * pix),
+                                margin: EdgeInsets.only(bottom: 16 * pix),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade50,
+                                  borderRadius: BorderRadius.circular(12 * pix),
+                                  border:
+                                      Border.all(color: Colors.red.shade200),
+                                ),
+                                child: Text(
+                                  _errorMessage!,
+                                  style: TextStyle(
+                                    color: Colors.red.shade700,
+                                    fontSize: 14 * pix,
+                                  ),
+                                ),
+                              ),
+
+                            _buildInfoCard(pix),
+                            SizedBox(height: 16 * pix),
+                            _buildSaveButton(pix),
+                            SizedBox(height: 16 * pix),
+                            _buildDeleteAccountButton(pix),
+                            SizedBox(height: 32 * pix),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: TopBar(title: "Thông tin cá nhân"),
+                  ),
+                ],
               ),
-            ),
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: TopBar(title: "Thông tin cá nhân"),
-            ),
-          ],
-        ),
       ),
     );
   }
 
   Widget _buildAvatarSection(double pix) {
+    Widget avatarWidget;
+
+    // Ưu tiên hiển thị ảnh local nếu người dùng đã chọn ảnh mới
+    if (_useLocalImage && _avatarImage != null) {
+      avatarWidget = Image.file(
+        _avatarImage!,
+        fit: BoxFit.cover,
+        width: 120 * pix,
+        height: 120 * pix,
+      );
+    }
+    // Nếu không có ảnh local, hiển thị ảnh từ server
+    else if (_profileImageUrl.isNotEmpty) {
+      avatarWidget = CachedNetworkImage(
+        imageUrl: _profileImageUrl,
+        fit: BoxFit.cover,
+        width: 120 * pix,
+        height: 120 * pix,
+        placeholder: (context, url) => Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+          ),
+        ),
+        errorWidget: (context, url, error) => Icon(
+          Icons.person,
+          size: 60 * pix,
+          color: Colors.grey,
+        ),
+        // Quan trọng: không lưu cache để luôn tải lại ảnh mới
+        cacheManager: null,
+      );
+    }
+    // Nếu không có cả ảnh local và ảnh từ server, hiển thị ảnh mặc định
+    else {
+      avatarWidget = Image.asset(
+        'lib/res/imagesLA/vietnam.jpg',
+        fit: BoxFit.cover,
+        width: 120 * pix,
+        height: 120 * pix,
+      );
+    }
+
     return Center(
       child: GestureDetector(
         onTap: _pickImage,
@@ -220,16 +347,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   ),
                 ],
               ),
-              child: ClipOval(
-                  child: _avatarImage != null
-                      ? Image.file(
-                          _avatarImage!,
-                          fit: BoxFit.cover,
-                        )
-                      : Image.asset(
-                          'lib/res/imagesLA/vietnam.jpg',
-                          fit: BoxFit.cover,
-                        )),
+              child: ClipOval(child: avatarWidget),
             ),
             Positioned(
               right: 0,
@@ -270,17 +388,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           children: [
             _buildSectionTitle("Thông tin cá nhân", pix),
             SizedBox(height: 16 * pix),
-            _buildTextField(
-                "Tài khoản", _usernameController, Icons.person, pix),
+            _buildTextField("Họ", _lastNameController, Icons.person, pix),
             SizedBox(height: 16 * pix),
             _buildTextField(
-                "Tên đăng nhập", _loginNameController, Icons.login, pix),
+                "Tên", _firstNameController, Icons.person_outline, pix),
             SizedBox(height: 16 * pix),
-            _buildSectionTitle("Bảo mật", pix),
+            _buildSectionTitle("Thông tin tài khoản", pix),
             SizedBox(height: 16 * pix),
-            _buildPasswordField("Mật khẩu", _passwordController, pix),
-            SizedBox(height: 16 * pix),
-            _buildTextField("Email", _emailController, Icons.email, pix),
+            _buildReadOnlyField("Email", _emailController, Icons.email, pix),
           ],
         ),
       ),
@@ -358,9 +473,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     );
   }
 
-  Widget _buildPasswordField(
+  Widget _buildReadOnlyField(
     String label,
     TextEditingController controller,
+    IconData icon,
     double pix,
   ) {
     return Column(
@@ -379,7 +495,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         ),
         Container(
           decoration: BoxDecoration(
-            color: Colors.grey[100],
+            color: Colors.grey[200],
             borderRadius: BorderRadius.circular(12 * pix),
             border: Border.all(
               color: Colors.grey[300]!,
@@ -388,38 +504,30 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           ),
           child: TextField(
             controller: controller,
-            obscureText: _obscurePassword,
+            readOnly: true,
+            enabled: false,
             decoration: InputDecoration(
               prefixIcon: Container(
                 margin: EdgeInsets.all(8 * pix),
                 padding: EdgeInsets.all(8 * pix),
                 decoration: BoxDecoration(
-                  color: const Color(0xff5B7BFE).withOpacity(0.1),
+                  color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(10 * pix),
                 ),
                 child: Icon(
-                  Icons.lock,
+                  icon,
                   size: 20 * pix,
-                  color: const Color(0xff5B7BFE),
-                ),
-              ),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
                   color: Colors.grey[600],
-                  size: 20 * pix,
                 ),
-                onPressed: () {
-                  setState(() {
-                    _obscurePassword = !_obscurePassword;
-                  });
-                },
               ),
               border: InputBorder.none,
               contentPadding: EdgeInsets.symmetric(
                 vertical: 16 * pix,
                 horizontal: 8 * pix,
               ),
+            ),
+            style: TextStyle(
+              color: Colors.grey[700],
             ),
           ),
         ),
@@ -450,23 +558,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         ],
       ),
       child: ElevatedButton(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text("Cập nhật thành công"),
-              backgroundColor: const Color(0xff5B7BFE),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10 * pix),
-              ),
-              margin: EdgeInsets.only(
-                bottom: 20 * pix,
-                left: 16 * pix,
-                right: 16 * pix,
-              ),
-            ),
-          );
-        },
+        onPressed: _isUpdating ? null : _updateProfile,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
@@ -475,20 +567,29 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             borderRadius: BorderRadius.circular(12 * pix),
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.save, size: 20 * pix),
-            SizedBox(width: 8 * pix),
-            Text(
-              "Lưu thay đổi",
-              style: TextStyle(
-                fontSize: 16 * pix,
-                fontWeight: FontWeight.bold,
+        child: _isUpdating
+            ? SizedBox(
+                width: 24 * pix,
+                height: 24 * pix,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.save, size: 20 * pix),
+                  SizedBox(width: 8 * pix),
+                  Text(
+                    "Lưu thay đổi",
+                    style: TextStyle(
+                      fontSize: 16 * pix,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }

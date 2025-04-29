@@ -29,6 +29,19 @@ class _LevelscreenState extends State<Levelscreen> {
     'Trung cấp',
     'Nâng cao',
   ];
+  String _transType() {
+    switch (widget.type) {
+      case "grammar":
+        return "Ngữ pháp";
+      case "listening":
+        return "Nghe";
+      case "speaking":
+        return "Phát âm";
+      default:
+        return "Loại bài tập không xác định";
+    }
+  }
+
   // Danh sách mô tả chi tiết cho từng cấp độ
   final Map<String, String> _levelSubtitles = {
     'beginner': 'Khởi đầu học tập',
@@ -84,7 +97,7 @@ class _LevelscreenState extends State<Levelscreen> {
         ),
         child: Column(
           children: [
-            TopBar(title: widget.type, isBack: true),
+            TopBar(title: "Luyện ${_transType()}", isBack: true),
             SizedBox(height: 12 * pix),
 
             // Header với thông tin loại bài tập
@@ -116,7 +129,7 @@ class _LevelscreenState extends State<Levelscreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Học ${widget.type}",
+                            "Học ${_transType()}",
                             style: TextStyle(
                               fontSize: 18 * pix,
                               fontWeight: FontWeight.bold,
@@ -366,11 +379,29 @@ class _LevelscreenState extends State<Levelscreen> {
                 ),
               ),
             ),
-            Icon(
-              Icons.chevron_right,
-              color: color,
-              size: 24 * pix,
-            ),
+            SizedBox(width: 8 * pix),
+            exercise.result != -1
+                ? Column(
+                    children: [
+                      Text('Max score',
+                          style: TextStyle(
+                            fontSize: 12 * pix,
+                            color: color,
+                            fontFamily: 'BeVietnamPro',
+                          )),
+                      SizedBox(height: 4 * pix),
+                      Text(
+                        exercise.result.toString(),
+                        style: TextStyle(
+                          fontSize: 14 * pix,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                          fontFamily: 'BeVietnamPro',
+                        ),
+                      ),
+                    ],
+                  )
+                : SizedBox.shrink(),
           ],
         ),
       ),

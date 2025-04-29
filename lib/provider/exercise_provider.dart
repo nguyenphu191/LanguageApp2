@@ -211,8 +211,9 @@ class ExerciseProvider with ChangeNotifier {
           "exerciseId": exerciseId,
         }),
       );
-
+      
       if (response.statusCode == 200 || response.statusCode == 201) {
+
         for (var i = 0; i < _exercises.length; i++) {
           if (_exercises[i].id == exerciseId) {
             // Chỉ cập nhật nếu điểm mới cao hơn

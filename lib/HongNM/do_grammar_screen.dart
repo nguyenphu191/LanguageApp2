@@ -169,6 +169,7 @@ class _DoGrammarscreenState extends State<DoGrammarscreen> {
                   onPressed: () {
                     Navigator.pop(context);
                     Navigator.pop(context);
+                    Navigator.pop(context);
                   },
                   icon: Icon(Icons.arrow_back),
                   label: Text("Quay lại"),

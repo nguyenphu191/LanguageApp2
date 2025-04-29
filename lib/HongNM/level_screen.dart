@@ -18,26 +18,31 @@ class Levelscreen extends StatefulWidget {
 class _LevelscreenState extends State<Levelscreen> {
   // Danh sách các cấp độ theo thứ tự
   final List<String> _levels = [
+    'beginner',
+    'basic',
+    'intermediate',
+    'advanced',
+  ];
+  final List<String> _levelNames = [
     'Người mới bắt đầu',
     'Cơ bản',
     'Trung cấp',
-    'Nâng cao'
+    'Nâng cao',
   ];
-
   // Danh sách mô tả chi tiết cho từng cấp độ
   final Map<String, String> _levelSubtitles = {
-    'Người mới bắt đầu': 'Khởi đầu học tập',
-    'Cơ bản': 'Nền tảng vững chắc',
-    'Trung cấp': 'Nâng cao kỹ năng',
-    'Nâng cao': 'Thành thạo ngôn ngữ',
+    'beginner': 'Khởi đầu học tập',
+    'basic': 'Nền tảng vững chắc',
+    'intermediate': 'Nâng cao kỹ năng',
+    'advanced': 'Thành thạo ngôn ngữ',
   };
 
   // Danh sách icon cho từng cấp độ
   final Map<String, IconData> _levelIcons = {
-    'Người mới bắt đầu': Icons.school,
-    'Cơ bản': Icons.auto_stories,
-    'Trung cấp': Icons.psychology,
-    'Nâng cao': Icons.emoji_events,
+    'beginner': Icons.school,
+    'basic': Icons.auto_stories,
+    'intermediate': Icons.psychology,
+    'advanced': Icons.emoji_events,
   };
 
   @override
@@ -46,7 +51,7 @@ class _LevelscreenState extends State<Levelscreen> {
     // Gọi API để lấy bài tập khi màn hình được khởi tạo
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<ExerciseProvider>(context, listen: false)
-          .fetchExercises(widget.type);
+          .fetchExerciseList(widget.type);
     });
   }
 
@@ -139,22 +144,6 @@ class _LevelscreenState extends State<Levelscreen> {
             Expanded(
               child: Consumer<ExerciseProvider>(
                 builder: (context, exerciseProvider, child) {
-                  // Lấy danh sách bài tập theo type
-                  List<ExerciseModel> exercises = [];
-                  // switch (widget.type) {
-                  //   case 'Ngữ pháp':
-                  //     exercises = exerciseProvider.grammarExercises;
-                  //     break;
-                  //   case 'Nghe':
-                  //     exercises = exerciseProvider.listeningExercises;
-                  //     break;
-                  //   case 'Phát âm':
-                  //     exercises = exerciseProvider.speakingExercises;
-                  //     break;
-                  //   default:
-                  //     exercises = [];
-                  // }
-
                   // Kiểm tra trạng thái tải
                   if (exerciseProvider.isLoading) {
                     return Center(
@@ -163,9 +152,22 @@ class _LevelscreenState extends State<Levelscreen> {
                       ),
                     );
                   }
+                  if (exerciseProvider.exercises.isEmpty) {
+                    return Center(
+                      child: Text(
+                        "Không có bài tập nào",
+                        style: TextStyle(
+                          fontSize: 16 * pix,
+                          color: Colors.grey.shade600,
+                          fontFamily: 'BeVietnamPro',
+                        ),
+                      ),
+                    );
+                  }
 
                   // Phân chia bài tập theo cấp độ
-                  final exercisesByLevel = _getExercisesByLevel(exercises);
+                  final exercisesByLevel =
+                      _getExercisesByLevel(exerciseProvider.exercises);
 
                   return ListView.builder(
                     padding: EdgeInsets.symmetric(
@@ -176,7 +178,7 @@ class _LevelscreenState extends State<Levelscreen> {
                       final levelExercises = exercisesByLevel[levelName] ?? [];
 
                       return _buildLevelCard(
-                        title: levelName,
+                        title: _levelNames[index],
                         subtitle: _levelSubtitles[levelName] ?? '',
                         icon: _levelIcons[levelName] ?? Icons.folder,
                         color: _getLevelColor(levelName),
@@ -259,7 +261,7 @@ class _LevelscreenState extends State<Levelscreen> {
                         ),
                         SizedBox(height: 8 * pix),
                         Text(
-                          "Nội dung đang được phát triển",
+                          "Chưa có bài tập nào, hãy quay lại sau",
                           style: TextStyle(
                             fontSize: 16 * pix,
                             color: Colors.grey.shade600,
@@ -305,15 +307,15 @@ class _LevelscreenState extends State<Levelscreen> {
           MaterialPageRoute(
             builder: (context) {
               switch (widget.type) {
-                case "Ngữ pháp":
+                case "Ngữ pháp" || "grammar":
                   return Lessonscreen(
-                    title: exercise.name,
+                    ex: exercise,
                   );
-                case "Nghe":
+                case "Nghe" || "listening":
                   return DoListenscreen(
                     exercise: exercise,
                   );
-                case "Phát âm":
+                case "Phát âm" || "speaking":
                   return DoSpeakscreen(
                     exercise: exercise,
                   );
@@ -377,11 +379,11 @@ class _LevelscreenState extends State<Levelscreen> {
 
   IconData _getTypeIcon() {
     switch (widget.type) {
-      case "Ngữ pháp":
+      case "Ngữ pháp" || "grammar":
         return Icons.menu_book;
-      case "Nghe":
+      case "Nghe" || "listening":
         return Icons.headphones;
-      case "Phát âm":
+      case "Phát âm" || "speaking":
         return Icons.mic;
       default:
         return Icons.school;
@@ -390,11 +392,11 @@ class _LevelscreenState extends State<Levelscreen> {
 
   Color _getTypeColor() {
     switch (widget.type) {
-      case "Ngữ pháp":
+      case "Ngữ pháp" || "grammar":
         return Colors.blue;
-      case "Nghe":
+      case "Nghe" || "listening":
         return Colors.green;
-      case "Phát âm":
+      case "Phát âm" || "speaking":
         return Colors.orange;
       default:
         return Colors.purple;
@@ -403,13 +405,13 @@ class _LevelscreenState extends State<Levelscreen> {
 
   Color _getLevelColor(String level) {
     switch (level) {
-      case 'Người mới bắt đầu':
+      case 'Người mới bắt đầu' || 'beginner':
         return Colors.green;
-      case 'Cơ bản':
+      case 'Cơ bản' || 'basic':
         return Colors.blue;
-      case 'Trung cấp':
+      case 'Trung cấp' || 'intermediate':
         return Colors.orange;
-      case 'Nâng cao':
+      case 'Nâng cao' || 'advanced':
         return Colors.purple;
       default:
         return Colors.grey;

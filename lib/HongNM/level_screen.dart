@@ -326,7 +326,7 @@ class _LevelscreenState extends State<Levelscreen> {
                   );
                 case "Nghe" || "listening":
                   return DoListenscreen(
-                    exercise: exercise,
+                    ex: exercise,
                   );
                 case "Phát âm" || "speaking":
                   return DoSpeakscreen(

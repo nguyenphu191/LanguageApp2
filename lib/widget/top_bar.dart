@@ -14,6 +14,7 @@ class _TopBarState extends State<TopBar> {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final pix = size.width / 375;
+
     return Container(
       height: 100 * pix,
       width: size.width,
@@ -42,18 +43,25 @@ class _TopBarState extends State<TopBar> {
                   )
                 : SizedBox(),
           ),
-          Container(
-            width: size.width - 100 * pix,
-            height: 80 * pix,
-            padding: EdgeInsets.only(top: 30 * pix),
-            child: Text(
-              '${widget.title}',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24 * pix,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'BeVietnamPro'),
-              textAlign: TextAlign.center,
+          Expanded(
+            child: Container(
+              height: 80 * pix,
+              padding: EdgeInsets.only(top: 30 * pix, right: 50 * pix),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  widget.title,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24 * pix,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'BeVietnamPro',
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ),
           ),
         ],

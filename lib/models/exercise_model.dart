@@ -48,7 +48,7 @@ class ExerciseModel {
       description: json['description'] ?? 'No description',
       duration: json['duration'] ?? 0,
       type: json['type'] ?? 'Unknown',
-      audio: json['audioUrl'] ?? 'No audio',
+      audio: json['audioText'] ?? 'No audio',
       level: json['difficulty'] ?? 'Unknown',
       theory: json['theory'] ?? 'No theory',
       questions: (json['questions'] as List<dynamic>? ?? [])

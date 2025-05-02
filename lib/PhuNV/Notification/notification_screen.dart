@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:language_app/provider/notification_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:language_app/provider/notification_provider.dart';
 import 'package:language_app/PhuNV/Notification/notification_detail_screen.dart';
 import 'package:language_app/widget/top_bar.dart';
 
@@ -12,14 +12,35 @@ class Notificationsscreen extends StatefulWidget {
 }
 
 class _NotificationsscreenState extends State<Notificationsscreen> {
+  late ScrollController _scrollController;
+
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+
     // Khởi tạo và lấy thông báo
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<NotificationProvider>(context, listen: false)
           .fetchNotifications();
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      // Tải thêm thông báo khi cuộn đến gần cuối
+      Provider.of<NotificationProvider>(context, listen: false)
+          .fetchNotifications();
+    }
   }
 
   @override
@@ -59,7 +80,8 @@ class _NotificationsscreenState extends State<Notificationsscreen> {
                         IconButton(
                           icon: Icon(Icons.refresh),
                           onPressed: () {
-                            notificationProvider.fetchNotifications();
+                            notificationProvider.fetchNotifications(
+                                refresh: true);
                           },
                         ),
                         if (notificationProvider.unreadCount > 0)
@@ -79,7 +101,8 @@ class _NotificationsscreenState extends State<Notificationsscreen> {
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  child: notificationProvider.isLoading
+                  child: notificationProvider.isLoading &&
+                          notificationProvider.notifications.isEmpty
                       ? Center(child: CircularProgressIndicator())
                       : notificationProvider.notifications.isEmpty
                           ? Center(child: Text("Không có thông báo"))
@@ -94,89 +117,104 @@ class _NotificationsscreenState extends State<Notificationsscreen> {
   }
 
   Widget _buildNotificationList(NotificationProvider provider) {
-    return ListView.builder(
-      padding: EdgeInsets.all(16),
-      itemCount: provider.notifications.length,
-      itemBuilder: (context, index) {
-        final notification = provider.notifications[index];
-        return Card(
-          elevation: 2,
-          margin: EdgeInsets.only(bottom: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          // Thêm màu nền cho thông báo chưa đọc
-          color: notification.isRead
-              ? Colors.white
-              : const Color.fromARGB(255, 224, 255, 247),
-          child: ListTile(
-            leading: Container(
-              padding: EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color:
-                    const Color.fromARGB(255, 181, 181, 181).withOpacity(0.5),
-                borderRadius: BorderRadius.circular(10),
+    return RefreshIndicator(
+      onRefresh: () => provider.fetchNotifications(refresh: true),
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: EdgeInsets.all(16),
+        itemCount:
+            provider.notifications.length + (provider.hasMorePages ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == provider.notifications.length) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: provider.isLoading
+                    ? CircularProgressIndicator()
+                    : SizedBox(),
               ),
-              child: Icon(
-                notification.icon,
-                color: notification.color,
-                size: 30,
-              ),
-            ),
-            title: Text(
-              notification.title,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight:
-                    notification.isRead ? FontWeight.normal : FontWeight.bold,
-              ),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(height: 5),
-                Text(
-                  notification.content,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                SizedBox(height: 5),
-                Text(
-                  notification.time,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                  ),
-                ),
-              ],
-            ),
-            onTap: () {
-              // Đánh dấu thông báo đã đọc
-              if (!notification.isRead && notification.id != null) {
-                provider.markAsRead(notification.id!);
-              }
+            );
+          }
 
-              // Chuyển hướng sang trang chi tiết thông báo
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => NotificationDetailscreen(
-                    notification: {
-                      "icon": notification.icon,
-                      "title": notification.title,
-                      "content": notification.content,
-                      "time": notification.time,
-                      "color": notification.color,
-                    },
-                  ),
+          final notification = provider.notifications[index];
+          return Card(
+            elevation: 2,
+            margin: EdgeInsets.only(bottom: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            // Thêm màu nền cho thông báo chưa đọc
+            color: notification.isRead
+                ? Colors.white
+                : const Color.fromARGB(255, 224, 255, 247),
+            child: ListTile(
+              leading: Container(
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: notification.color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-              );
-            },
-          ),
-        );
-      },
+                child: Icon(
+                  notification.icon,
+                  color: notification.color,
+                  size: 30,
+                ),
+              ),
+              title: Text(
+                notification.title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight:
+                      notification.isRead ? FontWeight.normal : FontWeight.bold,
+                ),
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: 5),
+                  Text(
+                    notification.content,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  SizedBox(height: 5),
+                  Text(
+                    notification.time,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+              onTap: () {
+                // Đánh dấu thông báo đã đọc
+                if (!notification.isRead && notification.id != null) {
+                  provider.markAsRead(notification.id!);
+                }
+
+                // Chuyển hướng sang trang chi tiết thông báo
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => NotificationDetailscreen(
+                      notification: {
+                        "icon": notification.icon,
+                        "color": notification.color,
+                        "title": notification.title,
+                        "content": notification.content,
+                        "time": notification.time,
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
     );
   }
 }

@@ -54,6 +54,7 @@ class _SignupscreenState extends State<Signupscreen> {
             right: 0,
             child: TopBar(
               title: 'Đăng ký',
+              isBack: true,
             ),
           ),
           Positioned(
@@ -66,7 +67,6 @@ class _SignupscreenState extends State<Signupscreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    TopBar(title: 'Đăng ký', isBack: true),
                     Center(
                       child: Column(
                         children: [

@@ -1,92 +1,100 @@
 import 'package:flutter/material.dart';
 
-enum NotificationType {
-  general, // Thông báo chung
-  event, // Sự kiện
-  warning, // Cảnh báo
-  message, // Tin nhắn
-  reminder // Nhắc nhở
-}
-
 class NotificationModel {
-  final String? id;
-  final NotificationType type;
+  final int? id;
   final String title;
   final String content;
-  final String time;
+  final DateTime createdAt;
   final bool isRead;
+  final String type;
+  final Map<String, dynamic>? data;
 
   NotificationModel({
     this.id,
-    required this.type,
     required this.title,
     required this.content,
-    required this.time,
-    this.isRead = false,
+    required this.createdAt,
+    required this.isRead,
+    required this.type,
+    this.data,
   });
 
-  // Phương thức lấy biểu tượng dựa trên loại thông báo
-  IconData get icon {
-    switch (type) {
-      case NotificationType.general:
-        return Icons.notifications;
-      case NotificationType.event:
-        return Icons.event;
-      case NotificationType.warning:
-        return Icons.warning;
-
-      case NotificationType.message:
-        return Icons.message;
-
-      case NotificationType.reminder:
-        return Icons.alarm;
-    }
-  }
-
-  // Phương thức lấy màu dựa trên loại thông báo
-  Color get color {
-    switch (type) {
-      case NotificationType.general:
-        return Colors.blue;
-      case NotificationType.event:
-        return Colors.green;
-      case NotificationType.warning:
-        return Colors.orange;
-
-      case NotificationType.message:
-        return Colors.indigo;
-
-      case NotificationType.reminder:
-        return Colors.amber;
-    }
-  }
-
-  // Tạo model từ JSON
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     return NotificationModel(
-      id: json["_id"],
-      type: json["type"] ?? "general",
-      title: json["title"] ?? "",
-      content: json["content"] ?? "",
-      time: json["time"] ?? "",
-      isRead: json["isRead"] ?? false,
+      id: json['id'],
+      title: json['title'],
+      content: json['content'],
+      createdAt: DateTime.parse(json['createdAt']),
+      isRead: json['isRead'] ?? false,
+      type: json['type'] ?? 'system',
+      data: json['data'],
     );
   }
 
-  // Chuyển đổi model thành JSON
-  Map<String, dynamic> toJson() {
-    return {
-      "id": id,
-      "type": type.toString().split('.').last,
-      "title": title,
-      "content": content,
-      "time": time,
-      "isRead": isRead,
-    };
+  // Trả về icon và màu sắc dựa vào loại thông báo
+  IconData get icon {
+    switch (type) {
+      case 'comment':
+        return Icons.comment;
+      case 'achievement':
+        return Icons.emoji_events;
+      case 'reminder':
+        return Icons.alarm;
+      case 'system':
+      default:
+        return Icons.notifications;
+    }
   }
 
-  @override
-  String toString() {
-    return 'NotificationModel{id: $id, type: $type, title: $title, content: $content, time: $time, isRead: $isRead}';
+  Color get color {
+    switch (type) {
+      case 'comment':
+        return Colors.green;
+      case 'achievement':
+        return Colors.amber;
+      case 'reminder':
+        return Colors.blue;
+      case 'system':
+      default:
+        return Colors.purple;
+    }
+  }
+
+  // Định dạng thời gian hiển thị
+  String get time {
+    final now = DateTime.now();
+    final difference = now.difference(createdAt);
+
+    if (difference.inMinutes < 1) {
+      return 'Vừa xong';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes} phút trước';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours} giờ trước';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} ngày trước';
+    } else {
+      return '${createdAt.day}/${createdAt.month}/${createdAt.year}';
+    }
+  }
+
+  NotificationModel copyWith({
+    int? id,
+    String? title,
+    String? content,
+    DateTime? createdAt,
+    bool? isRead,
+    String? type,
+    Map<String, dynamic>? data,
+  }) {
+    return NotificationModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      content: content ?? this.content,
+      createdAt: createdAt ?? this.createdAt,
+      isRead: isRead ?? this.isRead,
+      type: type ?? this.type,
+      data: data ?? this.data,
+    );
   }
 }

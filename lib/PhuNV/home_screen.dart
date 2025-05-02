@@ -7,6 +7,7 @@ import 'package:language_app/PhuNV/widget/Network_Img.dart';
 import 'package:language_app/PhuNV/widget/exercise_section.dart';
 import 'package:language_app/PhuNV/widget/topic_widget.dart';
 import 'package:language_app/provider/auth_provider.dart';
+import 'package:language_app/provider/notification_provider.dart';
 import 'package:language_app/provider/progress_provider.dart';
 import 'package:language_app/provider/topic_provider.dart';
 import 'package:language_app/provider/user_provider.dart';
@@ -25,7 +26,6 @@ class _HomescreenState extends State<Homescreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
-
 
   final List<String> _courseTypes = [
     'Ngữ pháp',
@@ -51,16 +51,39 @@ class _HomescreenState extends State<Homescreen>
       progressProvider.getTopicProgress();
       progressProvider.getExerciseProgress();
       progressProvider.getExamProgress();
-
+      Provider.of<NotificationProvider>(context, listen: false)
+          .checkForNewNotifications();
       final topicProvider = Provider.of<TopicProvider>(context, listen: false);
       topicProvider.fetchTopics(level: 1);
     });
+    // Thiết lập kiểm tra thông báo định kỳ (30 giây)
+    _setupPeriodicCheck();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this as WidgetsBindingObserver);
     _controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Kiểm tra thông báo mới khi ứng dụng được mở lại từ background
+      Provider.of<NotificationProvider>(context, listen: false)
+          .checkForNewNotifications();
+    }
+  }
+
+  void _setupPeriodicCheck() {
+    Future.delayed(Duration(seconds: 30), () {
+      if (mounted) {
+        Provider.of<NotificationProvider>(context, listen: false)
+            .checkForNewNotifications();
+        _setupPeriodicCheck();
+      }
+    });
   }
 
   @override
@@ -260,16 +283,54 @@ class _HomescreenState extends State<Homescreen>
                               )),
                           Container(
                               alignment: Alignment.centerRight,
-                              child: _buildCircleIconButton(
-                                icon: Icons.notifications_outlined,
-                                pix: pix,
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          Notificationsscreen(),
-                                    ),
+                              child: Builder(
+                                builder: (context) {
+                                  final unreadCount =
+                                      Provider.of<NotificationProvider>(context)
+                                          .unreadCount;
+
+                                  return Stack(
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(Icons.notifications),
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (_) =>
+                                                    Notificationsscreen()),
+                                          );
+                                        },
+                                      ),
+                                      if (unreadCount > 0)
+                                        Positioned(
+                                          right: 0,
+                                          top: 0,
+                                          child: Container(
+                                            padding: EdgeInsets.all(2),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            constraints: BoxConstraints(
+                                              minWidth: 16,
+                                              minHeight: 16,
+                                            ),
+                                            child: Text(
+                                              unreadCount > 99
+                                                  ? '99+'
+                                                  : unreadCount.toString(),
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   );
                                 },
                               )),
@@ -416,65 +477,66 @@ class _HomescreenState extends State<Homescreen>
   }
 
   Widget _buildProgressItem(String title, int completed, int total) {
-  final size = MediaQuery.of(context).size;
-  final pix = size.width / 375;
-  final double progressPercentage = total > 0 ? (completed / total) : 0.0;
-  
-  return Container(
-    height: pix * 60,
-    width: size.width - 80 * pix,
-    child: Column(
-      children: [
-        Container(
-          width: double.maxFinite,
-          child: Text(
-            "$completed/$total $title",
-            maxLines: 2,
-            style: TextStyle(
-              fontSize: 14 * pix,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'BeVietnamPro',
-              color: const Color(0xff165598).withOpacity(0.8),
-            ),
-            textAlign: TextAlign.left,
-          ),
-        ),
-        SizedBox(height: 8 * pix),
-        Container(
-          height: 16 * pix,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(8 * pix),
-          ),
-          child: Row(
-            children: [
-              Container(
-                height: 16 * pix,
-                width: progressPercentage * (size.width - 80 * pix),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [Color(0xff7DD339), Color(0xff9AE259)],
-                  ),
-                  borderRadius: BorderRadius.circular(8 * pix),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xff7DD339).withOpacity(0.4),
-                      offset: const Offset(0, 2),
-                      blurRadius: 4,
-                    ),
-                  ],
-                ),
+    final size = MediaQuery.of(context).size;
+    final pix = size.width / 375;
+    final double progressPercentage = total > 0 ? (completed / total) : 0.0;
+
+    return Container(
+      height: pix * 60,
+      width: size.width - 80 * pix,
+      child: Column(
+        children: [
+          Container(
+            width: double.maxFinite,
+            child: Text(
+              "$completed/$total $title",
+              maxLines: 2,
+              style: TextStyle(
+                fontSize: 14 * pix,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'BeVietnamPro',
+                color: const Color(0xff165598).withOpacity(0.8),
               ),
-            ],
+              textAlign: TextAlign.left,
+            ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+          SizedBox(height: 8 * pix),
+          Container(
+            height: 16 * pix,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(8 * pix),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  height: 16 * pix,
+                  width: progressPercentage * (size.width - 80 * pix),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [Color(0xff7DD339), Color(0xff9AE259)],
+                    ),
+                    borderRadius: BorderRadius.circular(8 * pix),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xff7DD339).withOpacity(0.4),
+                        offset: const Offset(0, 2),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildProgressIndicator(double pix) {
     return Consumer<ProgressProvider>(
         builder: (context, progressProvider, child) {

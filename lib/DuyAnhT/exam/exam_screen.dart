@@ -14,6 +14,8 @@ final List<Map<String, String>> exams = [
 class ExamScreen extends StatelessWidget {
   const ExamScreen({super.key});
 
+  void initState() {}
+
   @override
   Widget build(BuildContext context) {
     final pix = (MediaQuery.of(context).size.width / 375).clamp(0.8, 1.2);

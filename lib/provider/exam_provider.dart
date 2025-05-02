@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:language_app/Models/exam_model.dart';
 import 'package:language_app/models/common_response.dart';
 import 'package:language_app/models/exams/exam_overview.dart';
+import 'package:language_app/models/pagination.dart';
 import 'package:language_app/provider/auth_provider.dart';
 import 'package:http/http.dart' as http;
 
@@ -14,6 +15,14 @@ class ExamProvider with ChangeNotifier {
   CommonResponse<ExamOverviewData>? examOverviewData;
   bool isLoading = false;
   String? errorMessage;
+
+  int currentPage = 1;
+  int totalPages = 1;
+  int totalExams = 0;
+  bool hasNextPage = false;
+  bool hasPreviousPage = false;
+
+  bool isLoadingExams = false;
 
   final String baseUrl;
   final AuthProvider authProvider;
@@ -49,8 +58,6 @@ class ExamProvider with ChangeNotifier {
           jsonData,
           (data) => ExamOverviewData.fromJson(data as Map<String, dynamic>),
         );
-
-        print('Exam Overview: ${examOverviewData?.data.toString()}');
       } else {
         throw Exception('Server returned an error: ${response.statusCode}');
       }
@@ -83,9 +90,73 @@ class ExamProvider with ChangeNotifier {
 
     if (stats.total == 0) return 0.0;
 
-    print(stats.completed);
-    print(stats.total);
-
     return stats.completed / stats.total;
+  }
+
+  Future<void> fetchExamsByType(String type,
+      {int page = 1, int limit = 10}) async {
+    isLoadingExams = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final token = authProvider.token;
+
+      if (token == null) {
+        throw Exception("User not authenticated");
+      }
+
+      final response = await http.get(
+        Uri.parse('${baseUrl}exams?type=$type&page=$page&limit=$limit'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+
+        final CommonResponse<PaginatedResponse<ExamModel>> paginatedResponse =
+            CommonResponse<PaginatedResponse<ExamModel>>.fromJson(
+          jsonData,
+          (data) => PaginatedResponse<ExamModel>.fromJson(
+            data as Map<String, dynamic>,
+            (item) => ExamModel.fromJson(item),
+          ),
+        );
+
+        _exams = paginatedResponse.data.data;
+
+        currentPage = paginatedResponse.data.meta.page;
+        totalPages = paginatedResponse.data.meta.totalPages;
+        totalExams = paginatedResponse.data.meta.total;
+        hasNextPage = paginatedResponse.data.meta.hasNextPage;
+        hasPreviousPage = paginatedResponse.data.meta.hasPreviousPage;
+      } else {
+        throw Exception('Server returned an error: ${response.statusCode}');
+      }
+    } catch (e) {
+      errorMessage = e.toString();
+    } finally {
+      isLoadingExams = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadNextPage(String type) async {
+    if (hasNextPage && !isLoadingExams) {
+      await fetchExamsByType(type, page: currentPage + 1);
+    }
+  }
+
+  Future<void> loadPreviousPage(String type) async {
+    if (hasPreviousPage && !isLoadingExams) {
+      await fetchExamsByType(type, page: currentPage - 1);
+    }
+  }
+
+  Future<void> refreshExams(String type) async {
+    await fetchExamsByType(type, page: 1);
   }
 }

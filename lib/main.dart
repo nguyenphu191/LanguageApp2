@@ -14,6 +14,7 @@ import 'package:language_app/provider/topic_provider.dart';
 import 'package:language_app/provider/user_provider.dart';
 import 'package:language_app/provider/vocabulary_provider.dart';
 import 'package:language_app/res/imagesLA/AppImages.dart';
+import 'package:language_app/service/local_notification_service.dart';
 import 'package:language_app/utils/baseurl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
@@ -21,6 +22,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
+final localNotificationService = LocalNotificationService();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,7 +45,7 @@ Future<void> main() async {
 
   // Request permissions
   await Permission.microphone.request();
-  // await Permission.storage.request();
+  await Permission.storage.request();
 
   // Initialize notifications
   if (!kIsWeb) {

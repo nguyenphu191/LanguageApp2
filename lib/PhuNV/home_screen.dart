@@ -45,44 +45,17 @@ class _HomescreenState extends State<Homescreen>
       curve: Curves.easeInOut,
     );
     _controller.forward();
+
+    // Initialize data after widget is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final progressProvider =
           Provider.of<ProgressProvider>(context, listen: false);
       progressProvider.getTopicProgress();
       progressProvider.getExerciseProgress();
       progressProvider.getExamProgress();
-      Provider.of<NotificationProvider>(context, listen: false)
-          .checkForNewNotifications();
+
       final topicProvider = Provider.of<TopicProvider>(context, listen: false);
       topicProvider.fetchTopics(level: 1);
-    });
-    // Thiết lập kiểm tra thông báo định kỳ (30 giây)
-    _setupPeriodicCheck();
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this as WidgetsBindingObserver);
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      // Kiểm tra thông báo mới khi ứng dụng được mở lại từ background
-      Provider.of<NotificationProvider>(context, listen: false)
-          .checkForNewNotifications();
-    }
-  }
-
-  void _setupPeriodicCheck() {
-    Future.delayed(Duration(seconds: 30), () {
-      if (mounted) {
-        Provider.of<NotificationProvider>(context, listen: false)
-            .checkForNewNotifications();
-        _setupPeriodicCheck();
-      }
     });
   }
 

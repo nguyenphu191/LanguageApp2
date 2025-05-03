@@ -1,136 +1,173 @@
-import 'package:flutter/foundation.dart';
-import 'package:language_app/service/api_service.dart';
-import 'package:language_app/service/local_notification_service.dart';
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:language_app/Models/notification_model.dart';
+import 'package:language_app/utils/baseurl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/notification_model.dart';
 
 class NotificationProvider with ChangeNotifier {
-  final ApiService _apiService = ApiService();
-  final LocalNotificationService _localNotificationService =
-      LocalNotificationService();
-
-  List<NotificationModel> _notifications = [];
-  int _unreadCount = 0;
+  String baseUrl = UrlUtils.getBaseUrl();
   bool _isLoading = false;
-  int _currentPage = 1;
-  bool _hasMorePages = true;
-
-  List<NotificationModel> get notifications => _notifications;
+  int _unreadCount = 0;
   int get unreadCount => _unreadCount;
-  bool get isLoading => _isLoading;
-  bool get hasMorePages => _hasMorePages;
+  NotificationModel? _notificationModel;
+  List<NotificationModel> _notificationList = [];
+  List<NotificationModel> get getNotificationList => _notificationList;
+  bool get loading => _isLoading;
+  NotificationModel? get Notification => _notificationModel;
 
-  NotificationProvider() {
-    _loadUnreadCount();
-  }
-
-  Future<void> _loadUnreadCount() async {
-    try {
-      _unreadCount = await _apiService.getUnreadNotificationCount();
-      notifyListeners();
-    } catch (e) {
-      print('Error loading unread count: $e');
+  Future<bool> getListNotification() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString("token");
+    if (token == null) {
+      return false;
     }
-  }
-
-  Future<void> fetchNotifications({bool refresh = false}) async {
-    if (_isLoading) return;
-
-    if (refresh) {
-      _currentPage = 1;
-      _hasMorePages = true;
-    }
-
-    if (!_hasMorePages && !refresh) return;
-
     _isLoading = true;
+    _notificationList = [];
     notifyListeners();
-
     try {
-      final result = await _apiService.getNotifications(
-        page: _currentPage,
-        limit: 20,
+      final response = await http.get(
+        Uri.parse('${baseUrl}notifications'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
       );
-
-      final List<NotificationModel> newNotifications = (result['data'] as List)
-          .map((data) => NotificationModel.fromJson(data))
-          .toList();
-
-      if (_currentPage == 1) {
-        _notifications = newNotifications;
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        _notificationList = (data['data']['data'] as List)
+            .map((item) => NotificationModel.fromJson(item))
+            .toList();
+        _isLoading = false;
+        notifyListeners();
+        return true;
       } else {
-        _notifications.addAll(newNotifications);
+        _isLoading = false;
+        notifyListeners();
+        return false;
       }
-
-      _hasMorePages = _currentPage < (result['meta']['totalPages'] ?? 1);
-      if (_hasMorePages) {
-        _currentPage++;
-      }
-
-      await _loadUnreadCount();
     } catch (e) {
-      print('Error fetching notifications: $e');
-    } finally {
       _isLoading = false;
       notifyListeners();
+      debugPrint('Error fetching notifications: $e');
+      return false;
     }
   }
 
-  Future<void> markAsRead(int notificationId) async {
-    try {
-      await _apiService.markNotificationAsRead(notificationId);
-
-      final index = _notifications.indexWhere((n) => n.id == notificationId);
-      if (index != -1 && !_notifications[index].isRead) {
-        _notifications[index] = _notifications[index].copyWith(isRead: true);
-        _unreadCount = _unreadCount > 0 ? _unreadCount - 1 : 0;
-        notifyListeners();
-      }
-    } catch (e) {
-      print('Error marking notification as read: $e');
-    }
-  }
-
-  Future<void> markAllAsRead() async {
-    try {
-      await _apiService.markAllNotificationsAsRead();
-
-      _notifications =
-          _notifications.map((n) => n.copyWith(isRead: true)).toList();
-
-      _unreadCount = 0;
-      notifyListeners();
-    } catch (e) {
-      print('Error marking all notifications as read: $e');
-    }
-  }
-
-  Future<void> checkForNewNotifications() async {
+  Future<bool> markNotificationAsRead(int id) async {
     final prefs = await SharedPreferences.getInstance();
-    final lastCheckTime = prefs.getString('last_notification_check');
-
+    final token = prefs.getString("token");
+    if (token == null) {
+      return false;
+    }
+    _isLoading = true;
+    notifyListeners();
     try {
-      // Lấy số lượng thông báo chưa đọc mới
-      final newUnreadCount = await _apiService.getUnreadNotificationCount();
-
-      // Nếu có thông báo mới
-      if (newUnreadCount > _unreadCount) {
-        // Refresh danh sách thông báo
-        await fetchNotifications(refresh: true);
-
-        // Lấy thông báo mới nhất (chưa đọc) để hiển thị local notification
-        final newNotification = _notifications.firstWhere((n) => !n.isRead,
-            orElse: () => _notifications[0]);
-
-        // Hiển thị thông báo local
-        await _localNotificationService.showNotification(newNotification);
+      final response = await http.post(
+        Uri.parse('${baseUrl}notifications/$id/read'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        _notificationList = _notificationList.map((notification) {
+          if (notification.id == id) {
+            return NotificationModel(
+              id: notification.id,
+              title: notification.title,
+              content: notification.content,
+              createdAt: notification.createdAt,
+              isRead: true,
+              type: notification.type,
+              data: notification.data,
+            );
+          }
+          return notification;
+        }).toList();
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        _isLoading = false;
+        notifyListeners();
+        return false;
       }
-
-      // Cập nhật thời gian kiểm tra
-      prefs.setString(
-          'last_notification_check', DateTime.now().toIso8601String());
     } catch (e) {
-      print('Error checking for new notifications: $e');
+      debugPrint('Error marking notification as read: $e');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> getNumberNewNotification() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString("token");
+    if (token == null) {
+      return false;
+    }
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final response = await http.get(
+        Uri.parse('${baseUrl}notifications/unread-count'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        _unreadCount = data['data']['count'] ?? 0;
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Error fetching unread notification count: $e');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteNotification(int id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString("token");
+    if (token == null) {
+      return false;
+    }
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final response = await http.delete(
+        Uri.parse('${baseUrl}notifications/$id'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        _notificationList.removeWhere((notification) => notification.id == id);
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Error deleting notification: $e');
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
   }
 }

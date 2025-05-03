@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class NotificationModel {
@@ -20,18 +21,48 @@ class NotificationModel {
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    // Debug the input JSON
+    debugPrint('Parsing notification: ${json['id']} - ${json['title']}');
+
+    // Handle different date field names and formats
+    DateTime parsedDate;
+    try {
+      if (json.containsKey('createdAt')) {
+        parsedDate = DateTime.parse(json['createdAt']);
+      } else {
+        debugPrint(
+            'No date field found in notification JSON, using current time');
+        parsedDate = DateTime.now();
+      }
+    } catch (e) {
+      debugPrint('Error parsing date: $e');
+      parsedDate = DateTime.now();
+    }
+
     return NotificationModel(
       id: json['id'],
-      title: json['title'],
-      content: json['content'],
-      createdAt: DateTime.parse(json['createdAt']),
+      title: json['title'] ?? 'Thông báo',
+      content: json['content'] ?? '',
+      createdAt: parsedDate,
       isRead: json['isRead'] ?? false,
       type: json['type'] ?? 'system',
       data: json['data'],
     );
   }
 
-  // Trả về icon và màu sắc dựa vào loại thông báo
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'content': content,
+      'createdAt': createdAt.toIso8601String(),
+      'isRead': isRead,
+      'type': type,
+      'data': data,
+    };
+  }
+
+  // Return appropriate icon based on notification type
   IconData get icon {
     switch (type) {
       case 'comment':
@@ -46,6 +77,7 @@ class NotificationModel {
     }
   }
 
+  // Return appropriate color based on notification type
   Color get color {
     switch (type) {
       case 'comment':
@@ -60,7 +92,7 @@ class NotificationModel {
     }
   }
 
-  // Định dạng thời gian hiển thị
+  // Format the time display in a user-friendly way
   String get time {
     final now = DateTime.now();
     final difference = now.difference(createdAt);
@@ -78,6 +110,7 @@ class NotificationModel {
     }
   }
 
+  // Create a copy of this notification with some fields updated
   NotificationModel copyWith({
     int? id,
     String? title,

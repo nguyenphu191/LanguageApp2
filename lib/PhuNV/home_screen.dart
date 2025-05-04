@@ -92,6 +92,65 @@ class _HomescreenState extends State<Homescreen>
             _buildScrollableContent(size, pix),
             _buildHeader(size, pix),
             Positioned(
+              top: 40 * pix,
+              right: 20 * pix,
+              child: Container(
+                  alignment: Alignment.centerRight,
+                  child: Consumer<NotificationProvider>(
+                    builder: (context, notiProvider, child) {
+                      if (notiProvider.loading) {
+                        Center(child: CircularProgressIndicator());
+                      }
+                      final unreadCount =
+                          Provider.of<NotificationProvider>(context)
+                              .unreadCount;
+
+                      return Stack(
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.notifications,
+                                color: Colors.white, size: 30 * pix),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => Notificationsscreen()),
+                              );
+                            },
+                          ),
+                          if (unreadCount > 0)
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                padding: EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                constraints: BoxConstraints(
+                                  minWidth: 16,
+                                  minHeight: 16,
+                                ),
+                                child: Text(
+                                  unreadCount > 99
+                                      ? '99+'
+                                      : unreadCount.toString(),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  )),
+            ),
+            Positioned(
               bottom: 0 * pix,
               left: 0,
               right: 0,
@@ -258,60 +317,9 @@ class _HomescreenState extends State<Homescreen>
                                 },
                               )),
                           Container(
-                              alignment: Alignment.centerRight,
-                              child: Builder(
-                                builder: (context) {
-                                  final unreadCount =
-                                      Provider.of<NotificationProvider>(context)
-                                          .unreadCount;
-
-                                  return Stack(
-                                    children: [
-                                      IconButton(
-                                        icon: Icon(Icons.notifications,
-                                            color: Colors.white,
-                                            size: 30 * pix),
-                                        onPressed: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (_) =>
-                                                    Notificationsscreen()),
-                                          );
-                                        },
-                                      ),
-                                      if (unreadCount > 0)
-                                        Positioned(
-                                          right: 0,
-                                          top: 0,
-                                          child: Container(
-                                            padding: EdgeInsets.all(2),
-                                            decoration: BoxDecoration(
-                                              color: Colors.red,
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                            ),
-                                            constraints: BoxConstraints(
-                                              minWidth: 16,
-                                              minHeight: 16,
-                                            ),
-                                            child: Text(
-                                              unreadCount > 99
-                                                  ? '99+'
-                                                  : unreadCount.toString(),
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  );
-                                },
-                              )),
+                            height: 10 * pix,
+                            width: 10 * pix,
+                          ),
                         ],
                       ),
                       Row(

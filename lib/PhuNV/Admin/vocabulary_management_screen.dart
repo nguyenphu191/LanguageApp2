@@ -48,7 +48,6 @@ class _VocabularyManagementScreenState
     });
 
     try {
-      // Load topics first
       await Provider.of<TopicProvider>(context, listen: false).fetchTopics();
 
       // Then load vocabularies based on selected filters
@@ -93,6 +92,11 @@ class _VocabularyManagementScreenState
             vocab.word.toLowerCase().contains(_searchQuery.toLowerCase()) ||
             vocab.definition.toLowerCase().contains(_searchQuery.toLowerCase()))
         .toList();
+  }
+
+  String capitalizeFirst(String input) {
+    if (input.isEmpty) return input;
+    return input[0].toUpperCase() + input.substring(1).toLowerCase();
   }
 
   @override
@@ -307,6 +311,8 @@ class _VocabularyManagementScreenState
   }
 
   Widget _buildVocabularyList() {
+    final size = MediaQuery.of(context).size;
+    final pix = size.width / 375;
     return Consumer<VocabularyProvider>(
       builder: (context, vocabularyProvider, child) {
         if (vocabularyProvider.isLoading) {
@@ -323,7 +329,7 @@ class _VocabularyManagementScreenState
               children: [
                 Icon(
                   _searchQuery.isNotEmpty ? Icons.search_off : Icons.book,
-                  size: 60,
+                  size: 60 * pix,
                   color: Colors.grey[400],
                 ),
                 SizedBox(height: 16),
@@ -332,11 +338,11 @@ class _VocabularyManagementScreenState
                       ? 'Không tìm thấy từ vựng phù hợp'
                       : 'Không có từ vựng nào',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 16 * pix,
                     color: Colors.grey[600],
                   ),
                 ),
-                SizedBox(height: 10),
+                SizedBox(height: 10 * pix),
                 if (_searchQuery.isEmpty)
                   ElevatedButton(
                     onPressed: _loadData,
@@ -350,7 +356,7 @@ class _VocabularyManagementScreenState
         return RefreshIndicator(
           onRefresh: _loadData,
           child: ListView.builder(
-            padding: EdgeInsets.all(16),
+            padding: EdgeInsets.all(16 * pix),
             itemCount: filteredVocabularies.length,
             itemBuilder: (context, index) {
               final vocabulary = filteredVocabularies[index];
@@ -363,14 +369,16 @@ class _VocabularyManagementScreenState
   }
 
   Widget _buildVocabularyCard(VocabularyModel vocabulary) {
+    final size = MediaQuery.of(context).size;
+    final pix = size.width / 375;
     return Card(
       elevation: 2,
-      margin: EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: 16 * pix),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
-        padding: EdgeInsets.all(16),
+        padding: EdgeInsets.all(16 * pix),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -379,24 +387,9 @@ class _VocabularyManagementScreenState
               children: [
                 Expanded(
                   child: Text(
-                    vocabulary.word,
+                    capitalizeFirst(vocabulary.word),
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _getDifficultyColor(""),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    "",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
+                      fontSize: 18 * pix,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -454,19 +447,6 @@ class _VocabularyManagementScreenState
         ),
       ),
     );
-  }
-
-  Color _getDifficultyColor(String difficulty) {
-    switch (difficulty) {
-      case 'easy':
-        return Colors.green;
-      case 'medium':
-        return Colors.orange;
-      case 'hard':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
   }
 
   void _showDeleteConfirmation(VocabularyModel vocabulary) {

@@ -23,13 +23,11 @@ class VocabularyProvider with ChangeNotifier {
     final token = prefs.getString("token");
 
     try {
-      // Xây dựng query parameters
       Map<String, String> queryParams = {};
       if (topicId != null) queryParams['topicId'] = topicId;
       if (difficulty != null) queryParams['difficulty'] = difficulty;
 
-      // Xây dựng URL với query parameters
-      final uri = Uri.parse(baseUrl).replace(
+      final uri = Uri.parse("${baseUrl}vocabs").replace(
           queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
       final response = await http.get(
@@ -42,7 +40,7 @@ class VocabularyProvider with ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        _vocabularies = (data['data'] as List)
+        _vocabularies = (data['data']['data'] as List)
             .map((item) => VocabularyModel.fromJson(item))
             .toList();
         _isLoading = false;
@@ -59,13 +57,11 @@ class VocabularyProvider with ChangeNotifier {
   Future<bool> initVocabByTopic(int topicId) async {
     _isLoading = true;
     notifyListeners();
-    print("Topic ID: $topicId");
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("token");
 
     try {
       final uri = Uri.parse("${baseUrl}vocab-repetitions/initialize/$topicId");
-      print("URI: $uri");
       final response = await http.post(
         Uri.parse('$uri'),
         headers: {
@@ -90,8 +86,6 @@ class VocabularyProvider with ChangeNotifier {
 
   // Lấy từ vựng theo chủ đề
   Future<void> fetchVocabulariesByTopic(int topicId, bool isDone) async {
-    print("Topic ID: $topicId");
-    print("Is Done: $isDone");
     _isLoading = true;
     _vocabularies = [];
     notifyListeners();
@@ -104,7 +98,6 @@ class VocabularyProvider with ChangeNotifier {
 
     try {
       final uri = Uri.parse("${baseUrl}vocab-repetitions/review/$topicId");
-      print("URI: $uri");
       final response = await http.get(
         Uri.parse('$uri'),
         headers: {
@@ -115,12 +108,10 @@ class VocabularyProvider with ChangeNotifier {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        print('Fetched vocabularies: ${data['data']}');
         List<VocabularyModel> vocabularies = (data['data'] as List)
             .map((item) => VocabularyModel.fromJson(item))
             .toList();
         _vocabularies = vocabularies;
-        print(_vocabularies.length);
         _isLoading = false;
         notifyListeners();
       } else {
@@ -153,12 +144,10 @@ class VocabularyProvider with ChangeNotifier {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        print('Fetched vocabularies: ${data['data']}');
         List<VocabularyModel> vocabularies = (data['data'] as List)
             .map((item) => VocabularyModel.fromJson(item))
             .toList();
         _vocabularies = vocabularies;
-        print(_vocabularies[0]);
         _isLoading = false;
         notifyListeners();
         return true;
@@ -224,7 +213,6 @@ class VocabularyProvider with ChangeNotifier {
     required String example,
     required String exampleTranslation,
     required String topicId,
-    String? difficulty,
     String? imageUrl,
   }) async {
     final prefs = await SharedPreferences.getInstance();
@@ -236,7 +224,7 @@ class VocabularyProvider with ChangeNotifier {
 
     try {
       final response = await http.post(
-        Uri.parse(baseUrl),
+        Uri.parse("${baseUrl}vocabs"),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -246,16 +234,14 @@ class VocabularyProvider with ChangeNotifier {
           'definition': definition,
           'example': example,
           'exampleTranslation': exampleTranslation,
-          'topicId': topicId,
-          'difficulty': difficulty ?? 'medium',
+          'topicId': int.parse(topicId),
           'imageUrl': imageUrl ?? '',
         }),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         final newVocabulary = VocabularyModel.fromJson(data['data']);
-        print('New vocabulary created: ${newVocabulary.word}');
         _vocabularies.add(newVocabulary);
         _isLoading = false;
         notifyListeners();
@@ -280,7 +266,6 @@ class VocabularyProvider with ChangeNotifier {
     String? example,
     String? exampleTranslation,
     String? topicId,
-    String? difficulty,
     String? imageUrl,
   }) async {
     final prefs = await SharedPreferences.getInstance();
@@ -298,7 +283,6 @@ class VocabularyProvider with ChangeNotifier {
       if (exampleTranslation != null)
         updateData['exampleTranslation'] = exampleTranslation;
       if (topicId != null) updateData['topicId'] = topicId;
-      if (difficulty != null) updateData['difficulty'] = difficulty;
       if (imageUrl != null) updateData['imageUrl'] = imageUrl;
 
       final response = await http.put(
@@ -310,7 +294,7 @@ class VocabularyProvider with ChangeNotifier {
         body: json.encode(updateData),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         final updatedVocabulary = VocabularyModel.fromJson(data['data']);
 
@@ -345,15 +329,17 @@ class VocabularyProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      final uri = Uri.parse('${baseUrl}vocabs/$id');
+      print(uri);
       final response = await http.delete(
-        Uri.parse('$baseUrl$id'),
+        uri,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
       );
-
-      if (response.statusCode == 200) {
+      print(response.statusCode);
+      if (response.statusCode == 200 || response.statusCode == 201) {
         // Xóa từ vựng khỏi danh sách cục bộ
         _vocabularies
             .removeWhere((vocabulary) => vocabulary.id.toString() == id);

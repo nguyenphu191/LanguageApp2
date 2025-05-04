@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:language_app/Models/notification_model.dart';
 import 'package:language_app/widget/top_bar.dart';
+import 'package:language_app/provider/post_provider.dart';
+import 'package:language_app/HungNM/community/forum_detail_page.dart';
+import 'package:provider/provider.dart';
 
 class NotificationDetailscreen extends StatelessWidget {
   final NotificationModel notification;
@@ -139,22 +142,110 @@ class NotificationDetailscreen extends StatelessWidget {
               ),
             ),
             SizedBox(height: 24 * pix),
-            _buildAdditionalInfo(pix),
+            _buildAdditionalInfo(context, pix),
+            SizedBox(height: 16 * pix),
+            _buildNavigationButton(context, pix),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildAdditionalInfo(double pix) {
+  Widget _buildNavigationButton(BuildContext context, double pix) {
+    // Kiểm tra nếu thông báo là comment và có postId
+    if (notification.type == 'comment' &&
+        notification.data != null &&
+        notification.data!.containsKey('postId')) {
+      final postId = notification.data!['postId'];
+
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: () async {
+            // Hiển thị loading
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext context) {
+                return Center(
+                  child: CircularProgressIndicator(),
+                );
+              },
+            );
+
+            // Lấy chi tiết bài viết
+            final postProvider =
+                Provider.of<PostProvider>(context, listen: false);
+            final success = await postProvider.getPostDetail(postId);
+
+            // Ẩn loading
+            Navigator.pop(context);
+
+            if (success && postProvider.postDetail != null) {
+              // Điều hướng đến trang chi tiết bài viết
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      ForumDetailPage(post: postProvider.postDetail!),
+                ),
+              );
+            } else {
+              // Hiển thị thông báo lỗi
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Không thể tải bài viết'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          },
+          icon: Icon(Icons.arrow_forward_ios),
+          label: Text(
+            'Xem bài viết',
+            style: TextStyle(fontSize: 16 * pix),
+          ),
+          style: ElevatedButton.styleFrom(
+            padding: EdgeInsets.symmetric(vertical: 16 * pix),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12 * pix),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Không hiển thị nút nếu không phải comment notification
+    return SizedBox.shrink();
+  }
+
+  Widget _buildAdditionalInfo(BuildContext context, double pix) {
     if (notification.data == null || notification.data!.isEmpty) {
       return SizedBox();
     }
 
-    // Xử lý dữ liệu bổ sung
+    // Nếu là comment notification với postId, chỉ hiển thị các thông tin khác (không hiển thị postId)
+    if (notification.type == 'comment' &&
+        notification.data!.containsKey('postId')) {
+      Map<String, dynamic> filteredData = Map.from(notification.data!);
+      filteredData.remove('postId'); // Loại bỏ postId khỏi hiển thị
+
+      if (filteredData.isEmpty) {
+        return SizedBox(); // Không có thông tin bổ sung để hiển thị
+      }
+
+      return _buildAdditionalInfoContent(filteredData, pix);
+    }
+
+    // Với các loại notification khác, hiển thị tất cả data
+    return _buildAdditionalInfoContent(notification.data!, pix);
+  }
+
+  Widget _buildAdditionalInfoContent(Map<String, dynamic> data, double pix) {
     List<Widget> infoWidgets = [];
+
     try {
-      notification.data!.forEach((key, value) {
+      data.forEach((key, value) {
         // Chuyển đổi giá trị thành chuỗi hiển thị
         String displayValue;
         if (value is String) {

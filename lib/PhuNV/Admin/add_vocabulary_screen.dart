@@ -31,15 +31,7 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
   final _imageUrlController = TextEditingController();
 
   String? _selectedTopicId;
-  String _selectedDifficulty = 'medium';
   bool _isLoading = false;
-
-  List<String> difficulties = ['easy', 'medium', 'hard'];
-  Map<String, String> difficultyLabels = {
-    'easy': 'Dễ',
-    'medium': 'Trung bình',
-    'hard': 'Khó'
-  };
 
   @override
   void initState() {
@@ -119,7 +111,6 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
           example: _exampleController.text,
           exampleTranslation: _exampleTranslationController.text,
           topicId: _selectedTopicId,
-          difficulty: _selectedDifficulty,
           imageUrl: _imageUrlController.text,
         );
       } else {
@@ -129,7 +120,6 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
           example: _exampleController.text,
           exampleTranslation: _exampleTranslationController.text,
           topicId: _selectedTopicId!,
-          difficulty: _selectedDifficulty,
           imageUrl: _imageUrlController.text.isNotEmpty
               ? _imageUrlController.text
               : null,
@@ -370,42 +360,6 @@ class _AddVocabularyScreenState extends State<AddVocabularyScreen> {
                               return null;
                             },
                           );
-                        },
-                      ),
-                      SizedBox(height: 16),
-
-                      // Difficulty
-                      Text(
-                        'Độ khó',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        decoration: InputDecoration(
-                          hintText: 'Chọn độ khó',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          fillColor: Colors.white,
-                          filled: true,
-                        ),
-                        value: _selectedDifficulty,
-                        items: difficulties.map((difficulty) {
-                          return DropdownMenuItem<String>(
-                            value: difficulty,
-                            child: Text(
-                                difficultyLabels[difficulty] ?? difficulty),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _selectedDifficulty = value;
-                            });
-                          }
                         },
                       ),
                       SizedBox(height: 16),

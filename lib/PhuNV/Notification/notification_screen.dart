@@ -41,6 +41,32 @@ class _NotificationsscreenState extends State<Notificationsscreen>
     }
   }
 
+  Future<void> _seeDetail(NotificationModel noti) async {
+    if (!noti.isRead) {
+      final notificationProvider =
+          Provider.of<NotificationProvider>(context, listen: false);
+      if (noti.id != null) {
+        bool res = await notificationProvider.markNotificationAsRead(noti.id!);
+        if (!res) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Có lỗi xảy ra'),
+              duration: Duration(seconds: 2),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NotificationDetailscreen(notification: noti),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -97,7 +123,23 @@ class _NotificationsscreenState extends State<Notificationsscreen>
                             "Đánh dấu tất cả đã đọc",
                             style: TextStyle(color: Colors.white),
                           ),
-                          onPressed: () {},
+                          onPressed: () async {
+                            final notificationProvider =
+                                Provider.of<NotificationProvider>(context,
+                                    listen: false);
+                            bool res = await notificationProvider.markAll();
+                            if (!res) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Có lỗi xảy ra'),
+                                  duration: Duration(seconds: 2),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            } else {
+                              await _refreshNotifications();
+                            }
+                          },
                         ),
                     ],
                   ),
@@ -107,7 +149,7 @@ class _NotificationsscreenState extends State<Notificationsscreen>
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  child: _buildNotificationList(),
+                  child: _buildNotificationList(pix),
                 ),
               ],
             ),
@@ -117,31 +159,30 @@ class _NotificationsscreenState extends State<Notificationsscreen>
     );
   }
 
-  // Empty state widget
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(double pix) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             Icons.notifications_off_outlined,
-            size: 70,
+            size: 70 * pix,
             color: Colors.grey[400],
           ),
-          SizedBox(height: 16),
+          SizedBox(height: 16 * pix),
           Text(
             "Không có thông báo",
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 18 * pix,
               fontWeight: FontWeight.w500,
               color: Colors.grey[600],
             ),
           ),
-          SizedBox(height: 8),
+          SizedBox(height: 8 * pix),
           Text(
             "Thông báo mới sẽ xuất hiện ở đây",
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 14 * pix,
               color: Colors.grey[500],
             ),
           ),
@@ -150,7 +191,7 @@ class _NotificationsscreenState extends State<Notificationsscreen>
     );
   }
 
-  Widget _buildNotificationList() {
+  Widget _buildNotificationList(double pix) {
     return Consumer<NotificationProvider>(
         builder: (context, notiProvider, child) {
       if (notiProvider.loading) {
@@ -158,103 +199,154 @@ class _NotificationsscreenState extends State<Notificationsscreen>
           child: CircularProgressIndicator(),
         );
       } else if (notiProvider.getNotificationList.isEmpty) {
-        return _buildEmptyState();
+        return _buildEmptyState(pix);
       }
 
       return RefreshIndicator(
         onRefresh: () => _refreshNotifications(),
         child: ListView.builder(
           controller: _scrollController,
-          padding: EdgeInsets.all(16),
+          padding: EdgeInsets.all(16 * pix),
           itemCount: notiProvider.getNotificationList.length,
           itemBuilder: (context, index) {
             NotificationModel notification =
                 notiProvider.getNotificationList[index];
-            return _buildNotificationItem(notification);
+            return _buildNotificationItem(notification, pix);
           },
         ),
       );
     });
   }
 
-  Widget _buildNotificationItem(NotificationModel notification) {
-    return Card(
-      elevation: 2,
-      margin: EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+  Widget _buildNotificationItem(NotificationModel notification, double pix) {
+    return Dismissible(
+      key: ValueKey(notification.id ?? UniqueKey().toString()),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: EdgeInsets.only(right: 20.0),
+        margin: EdgeInsets.only(bottom: 16 * pix),
+        decoration: BoxDecoration(
+          color: Colors.red,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(
+          Icons.delete,
+          color: Colors.white,
+          size: 30 * pix,
+        ),
       ),
-      // Add background color for unread notifications
-      color: notification.isRead
-          ? Colors.white
-          : const Color.fromARGB(255, 224, 255, 247),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: () {},
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Notification icon with background
-              Container(
-                padding: EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: notification.color.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
+      confirmDismiss: (direction) async {
+        return await showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text("Xác nhận"),
+              content: Text("Bạn có chắc chắn muốn xóa thông báo này?"),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text("Hủy"),
                 ),
-                child: Icon(
-                  notification.icon,
-                  color: notification.color,
-                  size: 30,
+                TextButton(
+                  onPressed: () async {
+                    final notificationProvider =
+                        Provider.of<NotificationProvider>(context,
+                            listen: false);
+                    bool res = await notificationProvider
+                        .deleteNotification(notification.id!);
+                    if (!res) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Có lỗi xảy ra'),
+                          duration: Duration(seconds: 2),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Đã xóa thông báo'),
+                          duration: Duration(seconds: 2),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(
+                    "Xóa",
+                    style: TextStyle(color: Colors.red),
+                  ),
                 ),
-              ),
-              SizedBox(width: 16),
-
-              // Notification content
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title with bold for unread
-                    Text(
-                      notification.title,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: notification.isRead
-                            ? FontWeight.normal
-                            : FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-
-                    // Content preview
-                    Text(
-                      notification.content,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: 8),
-
-                    // Time with right alignment
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: Text(
-                        notification.time,
+              ],
+            );
+          },
+        );
+      },
+      child: Card(
+        elevation: 2,
+        margin: EdgeInsets.only(bottom: 16 * pix),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        color: Colors.white,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () {
+            _seeDetail(notification);
+          },
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: notification.color.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    notification.icon,
+                    color: notification.color,
+                    size: 30 * pix,
+                  ),
+                ),
+                SizedBox(width: 16 * pix),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        notification.title,
                         style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
+                          fontSize: 16 * pix,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                  ],
+                      SizedBox(height: 8 * pix),
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: Text(
+                          notification.time,
+                          style: TextStyle(
+                            fontSize: 12 * pix,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                if (!notification.isRead)
+                  Icon(
+                    Icons.circle,
+                    color: Colors.red,
+                    size: 10 * pix,
+                  ),
+              ],
+            ),
           ),
         ),
       ),

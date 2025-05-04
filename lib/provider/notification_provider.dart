@@ -64,8 +64,9 @@ class NotificationProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      final response = await http.post(
-        Uri.parse('${baseUrl}notifications/$id/read'),
+      final uri = Uri.parse('${baseUrl}notifications/$id/read');
+      final response = await http.patch(
+        uri,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -85,6 +86,51 @@ class NotificationProvider with ChangeNotifier {
             );
           }
           return notification;
+        }).toList();
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Error marking notification as read: $e');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> markAll() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString("token");
+    if (token == null) {
+      return false;
+    }
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final uri = Uri.parse('${baseUrl}notifications/read-all');
+      final response = await http.patch(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        _notificationList = _notificationList.map((notification) {
+          return NotificationModel(
+            id: notification.id,
+            title: notification.title,
+            content: notification.content,
+            createdAt: notification.createdAt,
+            isRead: true,
+            type: notification.type,
+            data: notification.data,
+          );
         }).toList();
         _isLoading = false;
         notifyListeners();

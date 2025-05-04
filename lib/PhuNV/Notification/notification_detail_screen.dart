@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:language_app/Models/notification_model.dart';
 import 'package:language_app/widget/top_bar.dart';
 
 class NotificationDetailscreen extends StatelessWidget {
-  final Map<String, dynamic> notification;
+  final NotificationModel notification;
 
   const NotificationDetailscreen({Key? key, required this.notification})
       : super(key: key);
@@ -24,16 +25,14 @@ class NotificationDetailscreen extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            // Top bar with back button
             Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: TopBar(
-                  title: "Chi tiết thông báo",
-                )),
-
-            // Main content area
+              top: 0,
+              left: 0,
+              right: 0,
+              child: TopBar(
+                title: "Chi tiết thông báo",
+              ),
+            ),
             Positioned(
               top: 100 * pix,
               left: 0,
@@ -42,17 +41,6 @@ class NotificationDetailscreen extends StatelessWidget {
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(24 * pix),
-                    topRight: Radius.circular(24 * pix),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: Offset(0, -5),
-                    ),
-                  ],
                 ),
                 child: _buildNotificationContent(context, pix),
               ),
@@ -71,32 +59,30 @@ class NotificationDetailscreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with icon and title
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Notification icon
                 Container(
                   padding: EdgeInsets.all(14 * pix),
                   decoration: BoxDecoration(
-                    color: notification["color"].withOpacity(0.2),
+                    color: notification.color.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(16 * pix),
                   ),
                   child: Icon(
-                    notification["icon"],
-                    color: notification["color"],
+                    notification.icon,
+                    color: notification.color,
                     size: 30 * pix,
                   ),
                 ),
                 SizedBox(width: 16 * pix),
-
-                // Title
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        notification["title"],
+                        notification.title.isNotEmpty
+                            ? notification.title
+                            : 'Không có tiêu đề',
                         style: TextStyle(
                           fontSize: 24 * pix,
                           fontWeight: FontWeight.bold,
@@ -105,7 +91,7 @@ class NotificationDetailscreen extends StatelessWidget {
                       ),
                       SizedBox(height: 8 * pix),
                       Text(
-                        notification["time"],
+                        notification.time,
                         style: TextStyle(
                           fontSize: 14 * pix,
                           color: Colors.grey[600],
@@ -116,10 +102,7 @@ class NotificationDetailscreen extends StatelessWidget {
                 ),
               ],
             ),
-
             SizedBox(height: 32 * pix),
-
-            // Content section
             Container(
               padding: EdgeInsets.all(20 * pix),
               decoration: BoxDecoration(
@@ -143,7 +126,9 @@ class NotificationDetailscreen extends StatelessWidget {
                   ),
                   SizedBox(height: 16 * pix),
                   Text(
-                    notification["content"],
+                    notification.content.isNotEmpty
+                        ? notification.content
+                        : 'Không có nội dung',
                     style: TextStyle(
                       fontSize: 16 * pix,
                       height: 1.5,
@@ -153,41 +138,101 @@ class NotificationDetailscreen extends StatelessWidget {
                 ],
               ),
             ),
-
             SizedBox(height: 24 * pix),
-
-            // Action buttons (if any)
-            _buildActionButtons(context, pix),
+            _buildAdditionalInfo(pix),
           ],
         ),
       ),
     );
   }
 
-  // Action buttons based on notification type
-  Widget _buildActionButtons(BuildContext context, double pix) {
-    // You can add different actions based on notification type
-    // For example, if it's a comment notification, add a "View comment" button
+  Widget _buildAdditionalInfo(double pix) {
+    if (notification.data == null || notification.data!.isEmpty) {
+      return SizedBox();
+    }
 
-    // For now, just add a dismiss button
-    return Center(
-      child: ElevatedButton.icon(
-        icon: Icon(Icons.check_circle_outline),
-        label: Text("Đánh dấu đã đọc"),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue,
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.symmetric(
-            horizontal: 24 * pix,
-            vertical: 12 * pix,
+    // Xử lý dữ liệu bổ sung
+    List<Widget> infoWidgets = [];
+    try {
+      notification.data!.forEach((key, value) {
+        // Chuyển đổi giá trị thành chuỗi hiển thị
+        String displayValue;
+        if (value is String) {
+          displayValue = value;
+        } else if (value is num) {
+          displayValue = value.toString();
+        } else if (value is List) {
+          displayValue = value.join(', ');
+        } else if (value is Map) {
+          displayValue = value.toString();
+        } else {
+          displayValue = value.toString();
+        }
+
+        infoWidgets.add(
+          Padding(
+            padding: EdgeInsets.only(bottom: 8 * pix),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$key: ',
+                  style: TextStyle(
+                    fontSize: 16 * pix,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    displayValue,
+                    style: TextStyle(
+                      fontSize: 16 * pix,
+                      height: 1.5,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30 * pix),
-          ),
+        );
+      });
+    } catch (e) {
+      debugPrint('Error processing notification.data: $e');
+      return Text(
+        'Không thể hiển thị thông tin bổ sung',
+        style: TextStyle(
+          fontSize: 16 * pix,
+          color: Colors.red,
         ),
-        onPressed: () {
-          Navigator.pop(context);
-        },
+      );
+    }
+
+    return Container(
+      padding: EdgeInsets.all(20 * pix),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(16 * pix),
+        border: Border.all(
+          color: Colors.grey[200]!,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Thông tin thêm",
+            style: TextStyle(
+              fontSize: 18 * pix,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          SizedBox(height: 16 * pix),
+          ...infoWidgets,
+        ],
       ),
     );
   }

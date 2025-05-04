@@ -56,6 +56,9 @@ class _HomescreenState extends State<Homescreen>
 
       final topicProvider = Provider.of<TopicProvider>(context, listen: false);
       topicProvider.fetchTopics(level: 1);
+      final notiProvider =
+          Provider.of<NotificationProvider>(context, listen: false);
+      notiProvider.getNumberNewNotification();
     });
   }
 
@@ -265,7 +268,9 @@ class _HomescreenState extends State<Homescreen>
                                   return Stack(
                                     children: [
                                       IconButton(
-                                        icon: Icon(Icons.notifications),
+                                        icon: Icon(Icons.notifications,
+                                            color: Colors.white,
+                                            size: 30 * pix),
                                         onPressed: () {
                                           Navigator.push(
                                             context,

@@ -1,4 +1,4 @@
-import 'package:language_app/Models/question_model.dart';
+import 'package:language_app/models/question_model.dart';
 
 class ExerciseModel {
   int id;

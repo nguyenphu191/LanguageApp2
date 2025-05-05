@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:language_app/hungnm/profile/setting/language_settings_screen.dart';
-import 'package:language_app/hungnm/profile/setting/profile_settings_screen.dart';
-import 'package:language_app/hungnm/profile/setting/goal/goal_settings_screen.dart';
-import 'package:language_app/hungnm/profile/setting/theme_settings_screen.dart';
-import 'package:language_app/hungnm/profile/setting/sound_settings_screen.dart';
-import 'package:language_app/hungnm/profile/setting/notification_settings_screen.dart';
-import 'package:language_app/hungnm/profile/setting/support_screen.dart';
-import 'package:language_app/hungnm/profile/setting/about_screen.dart';
-import 'package:language_app/hungnm/profile/setting/widgets/logout_dialog.dart';
+import './language_settings_screen.dart';
+import './profile_settings_screen.dart';
+import './goal/goal_settings_screen.dart';
+import './theme_settings_screen.dart';
+import './sound_settings_screen.dart';
+import './notification_settings_screen.dart';
+import './support_screen.dart';
+import './about_screen.dart';
+import './widgets/logout_dialog.dart';
 import 'package:language_app/widget/top_bar.dart';
 
 class SettingScreen extends StatelessWidget {

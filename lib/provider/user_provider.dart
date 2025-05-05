@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-import 'package:language_app/Models/user_model.dart';
+import 'package:language_app/models/user_model.dart';
 
 class UserProvider with ChangeNotifier {
   String baseUrl = "${UrlUtils.getBaseUrl()}users/";

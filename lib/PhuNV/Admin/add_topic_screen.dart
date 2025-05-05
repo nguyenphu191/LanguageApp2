@@ -3,7 +3,7 @@ import 'package:language_app/provider/language_provider.dart';
 import 'package:language_app/provider/topic_provider.dart';
 import 'package:provider/provider.dart';
 
-import 'package:language_app/Models/topic_model.dart';
+import 'package:language_app/models/topic_model.dart';
 import 'package:language_app/models/language_model.dart';
 import 'package:language_app/widget/top_bar.dart';
 

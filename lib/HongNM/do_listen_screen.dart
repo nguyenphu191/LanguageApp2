@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:language_app/Models/exercise_model.dart';
+import 'package:language_app/models/exercise_model.dart';
 import 'package:language_app/provider/exercise_provider.dart';
 import 'package:language_app/res/imagesLA/AppImages.dart';
 import 'package:language_app/widget/top_bar.dart';

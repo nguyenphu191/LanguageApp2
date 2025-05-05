@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:language_app/Models/post_model.dart';
+import 'package:language_app/models/post_model.dart';
 import './forum_detail_page.dart';
 
 class TopicPage extends StatelessWidget {

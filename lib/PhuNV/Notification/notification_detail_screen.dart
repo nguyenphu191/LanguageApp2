@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:language_app/Models/notification_model.dart';
+import 'package:language_app/models/notification_model.dart';
 import 'package:language_app/widget/top_bar.dart';
 import 'package:language_app/provider/post_provider.dart';
 import 'package:language_app/HungNM/community/forum_detail_page.dart';

@@ -1,7 +1,7 @@
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:language_app/PhuNV/Vocab/vocabulary_screen.dart';
-import 'package:language_app/Models/topic_model.dart';
+import 'package:language_app/models/topic_model.dart';
 
 class Topicwidget extends StatefulWidget {
   const Topicwidget({super.key, required this.topic});

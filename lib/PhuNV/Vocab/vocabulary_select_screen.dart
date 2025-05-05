@@ -4,7 +4,7 @@ import 'package:language_app/PhuNV/Vocab/vocabulary_topic_screen.dart';
 import 'package:language_app/PhuNV/Vocab/widget/detail_vocab_item.dart';
 import 'package:language_app/PhuNV/Vocab/widget/vocab_select_category.dart';
 import 'package:language_app/PhuNV/Vocab/word_game_screen.dart';
-import 'package:language_app/Models/vocabulary_model.dart';
+import 'package:language_app/models/vocabulary_model.dart';
 import 'package:language_app/provider/vocabulary_provider.dart';
 import 'package:language_app/widget/bottom_bar.dart';
 import 'package:language_app/widget/top_bar.dart';

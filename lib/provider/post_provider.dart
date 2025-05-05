@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:language_app/Models/like_model.dart';
-import 'package:language_app/Models/post_model.dart';
-import 'package:language_app/Models/comment_model.dart';
+import 'package:language_app/models/like_model.dart';
+import 'package:language_app/models/post_model.dart';
+import 'package:language_app/models/comment_model.dart';
 import 'package:language_app/utils/baseurl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

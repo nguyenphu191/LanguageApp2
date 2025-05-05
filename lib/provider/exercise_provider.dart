@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:language_app/Models/exercise_model.dart';
-import 'package:language_app/Models/speaking_data_model.dart';
+import 'package:language_app/models/exercise_model.dart';
+import 'package:language_app/models/speaking_data_model.dart';
 import 'package:language_app/utils/baseurl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

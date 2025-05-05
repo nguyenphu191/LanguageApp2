@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:language_app/Models/exam_model.dart';
+import 'package:language_app/models/exam_model.dart';
 import 'package:language_app/models/common_response.dart';
 import 'package:language_app/models/exams/exam_overview.dart';
 import 'package:language_app/provider/auth_provider.dart';

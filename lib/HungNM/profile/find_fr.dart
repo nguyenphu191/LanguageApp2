@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:language_app/hungnm/profile/widgets/friend_suggestion.dart';
+import './widgets/friend_suggestion.dart';
 import 'package:language_app/widget/top_bar.dart';
 
 class FindFrSreen extends StatelessWidget {

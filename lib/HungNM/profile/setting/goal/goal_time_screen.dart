@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:language_app/hungnm/profile/setting/goal/study_time_screen.dart';
+import './study_time_screen.dart';
 
 class GoalTimeScreen extends StatefulWidget {
   final String goal;

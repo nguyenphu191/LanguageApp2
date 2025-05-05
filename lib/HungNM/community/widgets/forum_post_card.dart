@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:language_app/Models/post_model.dart';
-import 'package:language_app/PhuNV/widget/Network_Img.dart';
+import 'package:language_app/models/post_model.dart';
+import 'package:language_app/PhuNV/widget/network_img.dart';
 import 'package:language_app/provider/post_provider.dart';
 import 'package:language_app/provider/user_provider.dart';
 import 'package:provider/provider.dart';

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:language_app/HungNM/community/community_forum_page.dart';
 import 'package:language_app/PhuNV/LoginSignup/login_screen.dart';
 import 'package:language_app/PhuNV/Notification/notification_screen.dart';
-import 'package:language_app/PhuNV/widget/Network_Img.dart';
+import 'package:language_app/PhuNV/widget/network_img.dart';
 import 'package:language_app/PhuNV/widget/exercise_section.dart';
 import 'package:language_app/PhuNV/widget/topic_widget.dart';
 import 'package:language_app/provider/auth_provider.dart';

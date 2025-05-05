@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:language_app/Models/vocabulary_model.dart';
+import 'package:language_app/models/vocabulary_model.dart';
 import 'package:language_app/PhuNV/Admin/add_vocabulary_screen.dart';
 import 'package:language_app/PhuNV/widget/network_img.dart';
 import 'package:provider/provider.dart';

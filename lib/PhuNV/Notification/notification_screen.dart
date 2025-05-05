@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:language_app/Models/notification_model.dart';
+import 'package:language_app/models/notification_model.dart';
 import 'package:provider/provider.dart';
 import 'package:language_app/provider/notification_provider.dart';
 import 'package:language_app/PhuNV/Notification/notification_detail_screen.dart';

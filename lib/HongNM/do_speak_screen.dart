@@ -1,7 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-import 'package:language_app/Models/exercise_model.dart';
-import 'package:language_app/Models/speaking_data_model.dart';
+import 'package:language_app/models/exercise_model.dart';
+import 'package:language_app/models/speaking_data_model.dart';
 import 'package:language_app/provider/exercise_provider.dart';
 import 'package:language_app/widget/top_bar.dart';
 import 'package:permission_handler/permission_handler.dart';

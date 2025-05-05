@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:language_app/hungnm/profile/setting/goal/goal_time_screen.dart';
+import './goal_time_screen.dart';
 
 class GoalSettingsScreen extends StatefulWidget {
   const GoalSettingsScreen({super.key});

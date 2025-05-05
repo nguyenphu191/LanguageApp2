@@ -1,4 +1,4 @@
-import 'package:language_app/Models/progress_model.dart';
+import 'package:language_app/models/progress_model.dart';
 
 class UserModel {
   final String id;

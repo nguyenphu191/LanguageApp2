@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:language_app/Models/user_model.dart';
-import 'package:language_app/hungnm/profile/activity.dart';
+import 'package:language_app/models/user_model.dart';
+import '../profile/activity.dart';
 import 'package:language_app/provider/user_provider.dart';
 import 'package:language_app/res/imagesLA/AppImages.dart';
 import 'package:language_app/widget/bottom_bar.dart';
-import 'package:language_app/hungnm/profile/add_fr.dart';
-import 'package:language_app/hungnm/profile/setting/setting_screen.dart';
-import 'package:language_app/hungnm/profile/friends_list_screen.dart';
+import '../profile/add_fr.dart';
+import '../profile/setting/setting_screen.dart';
+import '../profile/friends_list_screen.dart';
 import 'package:provider/provider.dart';
 import 'qr_scanner_screen.dart';
 import 'share_optiones.dart';

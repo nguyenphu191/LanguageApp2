@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:language_app/Models/topic_model.dart';
+import 'package:language_app/models/topic_model.dart';
 import 'package:language_app/PhuNV/widget/topic_widget.dart';
 import 'package:language_app/provider/topic_provider.dart';
 import 'package:language_app/provider/language_provider.dart';

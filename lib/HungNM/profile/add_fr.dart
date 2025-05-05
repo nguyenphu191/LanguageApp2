@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:language_app/hungnm/profile/find_fr.dart';
+import './find_fr.dart';
 import 'package:language_app/widget/top_bar.dart';
 import 'share_optiones.dart';
 import 'qr_scanner_screen.dart';

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:language_app/Models/post_model.dart';
+import 'package:language_app/models/post_model.dart';
 import 'package:language_app/PhuNV/Notification/notification_screen.dart';
 import 'package:language_app/provider/post_provider.dart';
 import 'package:language_app/provider/user_provider.dart';

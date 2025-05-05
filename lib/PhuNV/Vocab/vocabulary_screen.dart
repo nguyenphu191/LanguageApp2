@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:language_app/Models/topic_model.dart';
-import 'package:language_app/Models/vocabulary_model.dart';
+import 'package:language_app/models/topic_model.dart';
+import 'package:language_app/models/vocabulary_model.dart';
 import 'dart:math' as math;
 import 'package:language_app/PhuNV/widget/difficulty_rating_dia.dart';
 import 'package:language_app/PhuNV/widget/flash_card.dart';

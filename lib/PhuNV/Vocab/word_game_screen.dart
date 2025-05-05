@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:language_app/Models/vocabulary_model.dart';
-import 'package:language_app/PhuNV/widget/Network_Img.dart';
+import 'package:language_app/models/vocabulary_model.dart';
+import 'package:language_app/PhuNV/widget/network_img.dart';
 import 'package:language_app/provider/vocabulary_provider.dart';
 import 'package:language_app/widget/top_bar.dart';
 import 'package:provider/provider.dart';

@@ -1,5 +1,5 @@
-import 'package:language_app/Models/comment_model.dart';
-import 'package:language_app/Models/like_model.dart';
+import 'package:language_app/models/comment_model.dart';
+import 'package:language_app/models/like_model.dart';
 
 class PostModel {
   String? id;

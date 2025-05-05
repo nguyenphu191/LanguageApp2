@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:language_app/Models/vocabulary_model.dart';
+import 'package:language_app/models/vocabulary_model.dart';
 import 'package:language_app/provider/vocabulary_provider.dart';
 import 'package:language_app/provider/topic_provider.dart';
 import 'package:language_app/widget/top_bar.dart';

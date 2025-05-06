@@ -47,6 +47,7 @@ class _VocabularyListeningGameScreenState
 
   final TextEditingController _textController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -78,6 +79,7 @@ class _VocabularyListeningGameScreenState
     _animationController.dispose();
     _textController.dispose();
     _focusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -423,34 +425,42 @@ class _VocabularyListeningGameScreenState
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.green.shade200, Colors.indigo.shade50],
-            stops: const [0.0, 0.7],
+      resizeToAvoidBottomInset:
+          true, // Quan trọng: cho phép resize khi bàn phím xuất hiện
+      body: GestureDetector(
+        onTap: () {
+          // Ẩn bàn phím khi chạm vào màn hình bên ngoài TextField
+          FocusScope.of(context).unfocus();
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.green.shade200, Colors.indigo.shade50],
+              stops: const [0.0, 0.7],
+            ),
           ),
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              top: 0,
-              right: 0,
-              left: 0,
-              child: TopBar(
-                title: 'Nghe & Viết: ${widget.topicName}',
-                isBack: true,
+          child: Stack(
+            children: [
+              Positioned(
+                top: 0,
+                right: 0,
+                left: 0,
+                child: TopBar(
+                  title: 'Nghe & Viết: ${widget.topicName}',
+                  isBack: true,
+                ),
               ),
-            ),
-            Positioned(
-              top: 100 * pix,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _buildBody(context, pix, isDarkMode),
-            ),
-          ],
+              Positioned(
+                top: 100 * pix,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: _buildBody(context, pix, isDarkMode),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -462,33 +472,35 @@ class _VocabularyListeningGameScreenState
     }
 
     if (_hasError) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              color: Colors.red,
-              size: 50 * pix,
-            ),
-            SizedBox(height: 16 * pix),
-            Text(
-              _errorMessage,
-              style: TextStyle(
-                fontSize: 16 * pix,
+      return SingleChildScrollView(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
                 color: Colors.red,
+                size: 50 * pix,
               ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 16 * pix),
-            ElevatedButton(
-              onPressed: _loadGameData,
-              child: Text('Thử lại'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xff165598),
+              SizedBox(height: 16 * pix),
+              Text(
+                _errorMessage,
+                style: TextStyle(
+                  fontSize: 16 * pix,
+                  color: Colors.red,
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
-          ],
+              SizedBox(height: 16 * pix),
+              ElevatedButton(
+                onPressed: _loadGameData,
+                child: Text('Thử lại'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xff165598),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -497,70 +509,130 @@ class _VocabularyListeningGameScreenState
       return _buildPausedView(pix, isDarkMode);
     }
 
-    return Column(
-      children: [
-        _buildGameHeader(pix, isDarkMode),
-        Expanded(
-          child: _buildListeningGame(pix, isDarkMode),
-        ),
-      ],
+    // Tính toán chiều cao của bàn phím
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+
+    return SafeArea(
+      child: Column(
+        children: [
+          // Header (không cần cuộn)
+          _buildGameHeader(pix, isDarkMode),
+
+          // Phần còn lại có thể cuộn nếu cần
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              // Tự động cuộn xuống để hiện ô nhập khi bàn phím xuất hiện
+              physics: BouncingScrollPhysics(),
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: keyboardHeight > 0 ? keyboardHeight : 20 * pix,
+                ),
+                child: _buildListeningGame(pix, isDarkMode),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildGameHeader(double pix, bool isDarkMode) {
-    return Padding(
+    return Container(
       padding: EdgeInsets.symmetric(horizontal: 24 * pix, vertical: 16 * pix),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.timer,
-                    size: 24 * pix,
-                    color: _timeLeft < 10 ? Colors.red : Colors.blue,
-                  ),
-                  SizedBox(width: 8 * pix),
-                  Text(
-                    _formatTime(_timeLeft),
-                    style: TextStyle(
-                      fontSize: 18 * pix,
-                      fontWeight: FontWeight.bold,
+              Container(
+                padding: EdgeInsets.symmetric(
+                    horizontal: 12 * pix, vertical: 8 * pix),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.8),
+                  borderRadius: BorderRadius.circular(16 * pix),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.timer,
+                      size: 24 * pix,
                       color: _timeLeft < 10 ? Colors.red : Colors.blue,
                     ),
-                  ),
-                ],
-              ),
-              IconButton(
-                icon: Icon(
-                  Icons.pause_circle_filled,
-                  size: 28 * pix,
-                  color: Colors.blue,
+                    SizedBox(width: 8 * pix),
+                    Text(
+                      _formatTime(_timeLeft),
+                      style: TextStyle(
+                        fontSize: 18 * pix,
+                        fontWeight: FontWeight.bold,
+                        color: _timeLeft < 10 ? Colors.red : Colors.blue,
+                      ),
+                    ),
+                  ],
                 ),
-                onPressed: _pauseGame,
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.8),
+                  borderRadius: BorderRadius.circular(16 * pix),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.pause_circle_filled,
+                    size: 28 * pix,
+                    color: Colors.blue,
+                  ),
+                  onPressed: _pauseGame,
+                ),
               ),
             ],
           ),
           SizedBox(height: 16 * pix),
-          Text(
-            'Từ ${_currentWordIndex + 1}/${_gameWords.length}',
-            style: TextStyle(
-              fontSize: 18 * pix,
-              fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.white : Colors.black87,
+          Container(
+            padding:
+                EdgeInsets.symmetric(horizontal: 16 * pix, vertical: 10 * pix),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12 * pix),
+              border:
+                  Border.all(color: Colors.green.withOpacity(0.3), width: 1),
             ),
-          ),
-          SizedBox(height: 8 * pix),
-          Text(
-            'Nghe và viết từ tiếng Anh mà bạn nghe được',
-            style: TextStyle(
-              fontSize: 14 * pix,
-              fontWeight: FontWeight.w500,
-              color: isDarkMode ? Colors.white70 : Colors.black54,
+            child: Column(
+              children: [
+                Text(
+                  'Từ ${_currentWordIndex + 1}/${_gameWords.length}',
+                  style: TextStyle(
+                    fontSize: 18 * pix,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.green.shade800,
+                  ),
+                ),
+                SizedBox(height: 8 * pix),
+                Text(
+                  'Nghe và viết từ tiếng Anh mà bạn nghe được',
+                  style: TextStyle(
+                    fontSize: 14 * pix,
+                    fontWeight: FontWeight.w500,
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -568,10 +640,28 @@ class _VocabularyListeningGameScreenState
   }
 
   Widget _buildListeningGame(double pix, bool isDarkMode) {
+    // Lắng nghe sự kiện khi TextField được focus để tự động cuộn
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) {
+        // Sử dụng một hàm tạm thời để delay việc cuộn để đảm bảo bàn phím đã hiển thị
+        Future.delayed(Duration(milliseconds: 300), () {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      }
+    });
+
     return Padding(
-      padding: EdgeInsets.all(16 * pix),
+      padding: EdgeInsets.symmetric(horizontal: 16 * pix),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           // Play button
           Container(
@@ -582,6 +672,7 @@ class _VocabularyListeningGameScreenState
               borderRadius: BorderRadius.circular(16 * pix),
               child: InkWell(
                 borderRadius: BorderRadius.circular(16 * pix),
+                onTap: _playCurrentWord,
                 child: Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: 24 * pix,
@@ -605,7 +696,7 @@ class _VocabularyListeningGameScreenState
 
           SizedBox(height: 30 * pix),
 
-          // Input field
+          // Input field - Quan trọng: đây là phần gây ra lỗi tràn màn hình
           AnimatedBuilder(
             animation: _shakeAnimation,
             builder: (context, child) {
@@ -618,7 +709,7 @@ class _VocabularyListeningGameScreenState
               );
             },
             child: Container(
-              margin: EdgeInsets.symmetric(horizontal: 24 * pix),
+              margin: EdgeInsets.symmetric(horizontal: 16 * pix),
               decoration: BoxDecoration(
                 color: isDarkMode
                     ? Color(0xFF2A2A42).withOpacity(0.8)
@@ -688,6 +779,9 @@ class _VocabularyListeningGameScreenState
               ),
             ),
           ),
+
+          // Thêm padding phía dưới để đảm bảo nút luôn hiển thị
+          SizedBox(height: 120 * pix),
         ],
       ),
     );
@@ -695,44 +789,75 @@ class _VocabularyListeningGameScreenState
 
   Widget _buildPausedView(double pix, bool isDarkMode) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.pause_circle_filled,
-            size: 80 * pix,
-            color: Colors.blue,
-          ),
-          SizedBox(height: 24 * pix),
-          Text(
-            'Trò Chơi Tạm Dừng',
-            style: TextStyle(
-              fontSize: 24 * pix,
-              fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.white : Colors.black87,
+      child: Container(
+        margin: EdgeInsets.all(24 * pix),
+        padding: EdgeInsets.all(24 * pix),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.9),
+          borderRadius: BorderRadius.circular(24 * pix),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: Offset(0, 10),
             ),
-          ),
-          SizedBox(height: 16 * pix),
-          Text(
-            'Thời gian còn lại: ${_formatTime(_timeLeft)}',
-            style: TextStyle(
-              fontSize: 18 * pix,
-              color: isDarkMode ? Colors.white70 : Colors.black54,
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.pause_circle_filled,
+              size: 80 * pix,
+              color: Colors.blue,
             ),
-          ),
-          SizedBox(height: 32 * pix),
-          ElevatedButton.icon(
-            icon: Icon(Icons.play_arrow),
-            label: Text('Tiếp Tục Chơi'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              padding: EdgeInsets.symmetric(
-                  horizontal: 24 * pix, vertical: 12 * pix),
-              textStyle: TextStyle(fontSize: 16 * pix),
+            SizedBox(height: 24 * pix),
+            Text(
+              'Trò Chơi Tạm Dừng',
+              style: TextStyle(
+                fontSize: 24 * pix,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue.shade800,
+              ),
             ),
-            onPressed: _resumeGame,
-          ),
-        ],
+            SizedBox(height: 16 * pix),
+            Container(
+              padding:
+                  EdgeInsets.symmetric(horizontal: 16 * pix, vertical: 8 * pix),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12 * pix),
+              ),
+              child: Text(
+                'Thời gian còn lại: ${_formatTime(_timeLeft)}',
+                style: TextStyle(
+                  fontSize: 18 * pix,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.blue.shade700,
+                ),
+              ),
+            ),
+            SizedBox(height: 32 * pix),
+            ElevatedButton.icon(
+              icon: Icon(Icons.play_arrow),
+              label: Text('Tiếp Tục Chơi'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(
+                    horizontal: 24 * pix, vertical: 12 * pix),
+                textStyle:
+                    TextStyle(fontSize: 16 * pix, fontWeight: FontWeight.bold),
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16 * pix),
+                ),
+              ),
+              onPressed: _resumeGame,
+            ),
+          ],
+        ),
       ),
     );
   }

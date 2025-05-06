@@ -93,19 +93,16 @@ class ExerciseProvider with ChangeNotifier {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
 
-        // Debug thông tin
-        debugPrint('API Response: ${response.body}');
-
         final exerciseData = data['data'];
 
-        // Debug trước khi parse để kiểm tra từng trường
-        debugPrint('ID: ${exerciseData['id']}');
-        debugPrint('Title: ${exerciseData['title']}');
-        debugPrint('Description: ${exerciseData['description']}');
-        debugPrint('Theory: ${exerciseData['theory']}');
-        debugPrint('AudioUrl: ${exerciseData['audioUrl']}');
-        debugPrint('Type: ${exerciseData['type']}');
-        debugPrint('Difficulty: ${exerciseData['difficulty']}');
+        // // Debug trước khi parse để kiểm tra từng trường
+        // debugPrint('ID: ${exerciseData['id']}');
+        // debugPrint('Title: ${exerciseData['title']}');
+        // debugPrint('Description: ${exerciseData['description']}');
+        // debugPrint('Theory: ${exerciseData['theory']}');
+        // debugPrint('AudioUrl: ${exerciseData['audioUrl']}');
+        // debugPrint('Type: ${exerciseData['type']}');
+        // debugPrint('Difficulty: ${exerciseData['difficulty']}');
 
         try {
           _exercise = ExerciseModel.fromJson(exerciseData);
@@ -202,7 +199,7 @@ class ExerciseProvider with ChangeNotifier {
     notifyListeners();
     try {
       final uri = Uri.parse("${baseUrl}exercise-results");
-      final response = await http.post(
+      final response = await http.put(
         uri,
         headers: {
           'Content-Type': 'application/json',
@@ -242,7 +239,6 @@ class ExerciseProvider with ChangeNotifier {
     }
   }
 
-  // Cập nhật phương thức fetchSpeaking trong ExerciseProvider
   Future<void> fetchSpeaking(int id) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("token");

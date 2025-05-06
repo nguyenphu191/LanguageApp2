@@ -30,19 +30,19 @@ class DetailVocabItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
+                  content,
+                  style: TextStyle(
+                    fontSize: 16 * pix,
+                    color: Colors.black87,
+                  ),
+                ),
+                SizedBox(height: 4 * pix),
+                Text(
                   label,
                   style: TextStyle(
                     fontSize: 14 * pix,
                     fontWeight: FontWeight.bold,
                     color: Colors.grey.shade800,
-                  ),
-                ),
-                SizedBox(height: 4 * pix),
-                Text(
-                  content,
-                  style: TextStyle(
-                    fontSize: 16 * pix,
-                    color: Colors.black87,
                   ),
                 ),
               ],

@@ -165,6 +165,7 @@ class _DoGrammarscreenState extends State<DoGrammarscreen> {
                     ),
                   ),
                 ),
+                SizedBox(width: 10),
                 ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(context);
@@ -399,7 +400,7 @@ class _DoGrammarscreenState extends State<DoGrammarscreen> {
                                 selectedAnswer ==
                                         questions[currentQuestion].answer
                                     ? "Chính xác! Đáp án đúng là '${questions[currentQuestion].answer}'."
-                                    : "Đáp án đúng là '${questions[currentQuestion].answer}'.\n${questions[currentQuestion].hint}",
+                                    : "Đáp án đúng là '${questions[currentQuestion].answer}'",
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: Colors.black87,

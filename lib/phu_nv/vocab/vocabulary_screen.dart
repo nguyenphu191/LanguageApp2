@@ -395,33 +395,37 @@ class _VocabularyScreenState extends State<VocabularyScreen>
                                         ),
                                       ),
                                     ),
-                                    Padding(
-                                      padding: EdgeInsets.only(top: 20 * pix),
-                                      child: ElevatedButton(
-                                        onPressed: () =>
-                                            _showDifficultyRatingDialog(
-                                                cards[index]),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.blue,
-                                          foregroundColor: Colors.white,
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 24 * pix,
-                                            vertical: 12 * pix,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12 * pix),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          'Đánh giá độ khó',
-                                          style: TextStyle(
-                                            fontSize: 16 * pix,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                                    widget.topic != null
+                                        ? Padding(
+                                            padding:
+                                                EdgeInsets.only(top: 20 * pix),
+                                            child: ElevatedButton(
+                                              onPressed: () =>
+                                                  _showDifficultyRatingDialog(
+                                                      cards[index]),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.blue,
+                                                foregroundColor: Colors.white,
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 24 * pix,
+                                                  vertical: 12 * pix,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          12 * pix),
+                                                ),
+                                              ),
+                                              child: Text(
+                                                'Đánh giá độ khó',
+                                                style: TextStyle(
+                                                  fontSize: 16 * pix,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                        : Container(),
                                   ],
                                 ),
                               );

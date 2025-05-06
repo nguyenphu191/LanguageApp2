@@ -237,6 +237,12 @@ class _VocabularySelectScreenState extends State<VocabularySelectScreen>
                     ),
                     Divider(),
                     DetailVocabItem(
+                      content: 'Phiên âm:',
+                      label: vocabulary.transcription,
+                      icon: Icons.record_voice_over,
+                    ),
+                    Divider(),
+                    DetailVocabItem(
                       content: 'Ví dụ:',
                       label: vocabulary.example,
                       icon: Icons.format_quote,

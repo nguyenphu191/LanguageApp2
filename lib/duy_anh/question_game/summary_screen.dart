@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 
-class SummaryScreen extends StatelessWidget {
+class SummaryScreen extends StatefulWidget {
   final int examId;
   final String examTitle;
   final List<bool?> answers;
@@ -27,13 +27,54 @@ class SummaryScreen extends StatelessWidget {
   });
 
   @override
+  State<SummaryScreen> createState() => _SummaryScreenState();
+}
+
+class _SummaryScreenState extends State<SummaryScreen> {
+  // Store all questions from both single questions and sections
+  List<Map<String, dynamic>> allQuestions = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Process all questions from exam when the screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _processExamQuestions();
+    });
+  }
+
+  void _processExamQuestions() {
+    final examProvider = Provider.of<ExamProvider>(context, listen: false);
+    final exam = examProvider.currentExam;
+
+    if (exam == null) {
+      setState(() {
+        allQuestions = [];
+        isLoading = false;
+      });
+      return;
+    }
+
+    // Use the provider's combined question list instead of rebuilding it
+    final providerQuestions = examProvider.allQuestions;
+    print(
+        "SummaryScreen: Retrieved ${providerQuestions.length} questions from provider");
+
+    setState(() {
+      // Create a copy of the provider's question list
+      allQuestions = List<Map<String, dynamic>>.from(providerQuestions);
+      isLoading = false;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final pix = size.width / 375;
-    final scorePercentage = (score / totalQuestions * 100).round();
+    final scorePercentage =
+        (widget.score / widget.totalQuestions * 100).round();
     final examProvider = Provider.of<ExamProvider>(context, listen: false);
-
-    // Make sure we have the exam data available
     final exam = examProvider.currentExam;
 
     return Scaffold(
@@ -66,7 +107,7 @@ class SummaryScreen extends StatelessWidget {
               child: Column(
                 children: [
                   // Submission status (success/error)
-                  if (!submissionSuccess) _buildSubmissionStatus(),
+                  if (!widget.submissionSuccess) _buildSubmissionStatus(),
 
                   // Result summary card
                   Card(
@@ -99,7 +140,7 @@ class SummaryScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            examTitle,
+                            widget.examTitle,
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.grey[600],
@@ -119,13 +160,13 @@ class SummaryScreen extends StatelessWidget {
                               _buildScoreCircle(
                                 context,
                                 'Đúng',
-                                '$score',
+                                '${widget.score}',
                                 Colors.green,
                               ),
                               _buildScoreCircle(
                                 context,
                                 'Sai',
-                                '${totalQuestions - score}',
+                                '${widget.totalQuestions - widget.score}',
                                 Colors.red,
                               ),
                             ],
@@ -137,20 +178,42 @@ class SummaryScreen extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // Detailed results
-                  if (exam != null) ...[
+                  if (isLoading) ...[
+                    const Expanded(
+                      child: Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                  ] else if (allQuestions.isEmpty) ...[
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'Không có kết quả chi tiết',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ] else ...[
                     Expanded(
                       child: ListView.separated(
-                        itemCount: exam.examSingleQuestions.length,
+                        itemCount: allQuestions.length,
                         separatorBuilder: (context, index) =>
                             const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           // Make sure we don't go out of bounds
-                          if (index >= answers.length) return const SizedBox();
+                          if (index >= widget.answers.length ||
+                              index >= allQuestions.length) {
+                            return const SizedBox();
+                          }
 
-                          final questionItem = exam.examSingleQuestions[index];
-                          final questionData = questionItem.question;
-                          final isCorrect = answers[index] == true;
-                          final userAnswer = answers[index];
+                          final questionData = allQuestions[index];
+                          final question = questionData['question'];
+                          final sectionTitle = questionData['sectionTitle'];
+                          final isCorrect = widget.answers[index] == true;
+                          final userAnswer = widget.answers[index];
 
                           return Card(
                             elevation: 2,
@@ -168,7 +231,9 @@ class SummaryScreen extends StatelessWidget {
                                     Icon(isCorrect ? Icons.check : Icons.close),
                               ),
                               title: Text(
-                                'Câu hỏi ${index + 1}',
+                                sectionTitle != null
+                                    ? 'Câu hỏi ${index + 1} (${sectionTitle})'
+                                    : 'Câu hỏi ${index + 1}',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -190,7 +255,7 @@ class SummaryScreen extends StatelessWidget {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      if (questionData.mediaUrl != null) ...[
+                                      if (question.mediaUrl != null) ...[
                                         Container(
                                           width: double.infinity,
                                           height: 150,
@@ -206,7 +271,7 @@ class SummaryScreen extends StatelessWidget {
                                             borderRadius:
                                                 BorderRadius.circular(8),
                                             child: CachedNetworkImage(
-                                              imageUrl: questionData.mediaUrl!,
+                                              imageUrl: question.mediaUrl!,
                                               fit: BoxFit.contain,
                                               placeholder: (context, url) =>
                                                   Container(
@@ -229,7 +294,7 @@ class SummaryScreen extends StatelessWidget {
                                         ),
                                       ],
                                       Text(
-                                        questionData.question,
+                                        question.question,
                                         style: const TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w500,
@@ -238,212 +303,162 @@ class SummaryScreen extends StatelessWidget {
                                       const SizedBox(height: 12),
 
                                       // Show all options
-                                      if (questionData.options != null) ...[
-                                        ...processOptions(questionData.options!)
+                                      if (question.options != null) ...[
+                                        ...processOptions(question.options!)
                                             .map((option) {
                                           final isCorrectOption =
-                                              option == questionData.answer;
-                                          final isSelectedOption =
-                                              userSelectedAnswers[index] ==
+                                              option == question.answer;
+                                          final isSelectedOption = index <
+                                                  widget.userSelectedAnswers
+                                                      .length &&
+                                              widget.userSelectedAnswers[
+                                                      index] ==
                                                   option;
                                           final bool isWrongSelection =
                                               isSelectedOption &&
                                                   !isCorrectOption;
 
-                                          return Padding(
-                                            padding: const EdgeInsets.only(
+                                          return Container(
+                                            margin: const EdgeInsets.only(
                                                 bottom: 8),
-                                            child: Container(
-                                              padding: const EdgeInsets.all(12),
-                                              decoration: BoxDecoration(
+                                            decoration: BoxDecoration(
+                                              color: isCorrectOption
+                                                  ? Colors.green
+                                                      .withOpacity(0.1)
+                                                  : (isWrongSelection
+                                                      ? Colors.red
+                                                          .withOpacity(0.1)
+                                                      : Colors.grey
+                                                          .withOpacity(0.05)),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
                                                 color: isCorrectOption
-                                                    ? Colors.green[50]
+                                                    ? Colors.green
                                                     : (isWrongSelection
-                                                        ? Colors.red[50]
-                                                        : Colors.grey[100]),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                border: Border.all(
+                                                        ? Colors.red
+                                                        : Colors.grey.shade300),
+                                                width: 1.5,
+                                              ),
+                                            ),
+                                            padding: const EdgeInsets.all(12),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  isCorrectOption
+                                                      ? Icons.check_circle
+                                                      : (isWrongSelection
+                                                          ? Icons.cancel
+                                                          : Icons
+                                                              .circle_outlined),
                                                   color: isCorrectOption
                                                       ? Colors.green
                                                       : (isWrongSelection
                                                           ? Colors.red
-                                                          : Colors.grey[300]!),
+                                                          : Colors.grey),
+                                                  size: 20,
                                                 ),
-                                              ),
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    isCorrectOption
-                                                        ? Icons.check_circle
-                                                        : (isWrongSelection
-                                                            ? Icons.cancel
-                                                            : Icons
-                                                                .circle_outlined),
-                                                    color: isCorrectOption
-                                                        ? Colors.green
-                                                        : (isWrongSelection
-                                                            ? Colors.red
-                                                            : Colors.grey),
-                                                    size: 20,
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Expanded(
-                                                    child: Text(
-                                                      option,
-                                                      style: TextStyle(
-                                                        color: isCorrectOption
-                                                            ? Colors.green[800]
-                                                            : (isWrongSelection
-                                                                ? Colors
-                                                                    .red[800]
-                                                                : Colors
-                                                                    .black87),
-                                                      ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    option,
+                                                    style: TextStyle(
+                                                      color: isCorrectOption
+                                                          ? Colors
+                                                              .green.shade800
+                                                          : (isWrongSelection
+                                                              ? Colors
+                                                                  .red.shade800
+                                                              : Colors.black87),
                                                     ),
                                                   ),
-                                                  if (isSelectedOption) ...[
-                                                    Container(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 2,
-                                                      ),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.blue[100],
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(12),
-                                                      ),
-                                                      child: Text(
-                                                        'Đã chọn',
-                                                        style: TextStyle(
-                                                          fontSize: 12,
-                                                          color:
-                                                              Colors.blue[800],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ],
-                                              ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                if (isSelectedOption &&
+                                                    !isCorrectOption)
+                                                  const Icon(
+                                                    Icons.info,
+                                                    color: Colors.red,
+                                                    size: 18,
+                                                  ),
+                                              ],
                                             ),
                                           );
                                         }).toList(),
-                                      ] else ...[
-                                        // For fill-in-blank questions
+                                      ] else if (question.type ==
+                                          "fill_in_blank") ...[
+                                        Row(
+                                          children: [
+                                            const Text(
+                                              'Đáp án đúng: ',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Text(
+                                              question.answer,
+                                              style: const TextStyle(
+                                                color: Colors.green,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            const Text(
+                                              'Bạn đã trả lời: ',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Text(
+                                              index <
+                                                      widget.userSelectedAnswers
+                                                          .length
+                                                  ? widget.userSelectedAnswers[
+                                                      index]
+                                                  : 'Không có đáp án',
+                                              style: TextStyle(
+                                                color: isCorrect
+                                                    ? Colors.green
+                                                    : Colors.red,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+
+                                      // Explanation if available
+                                      if (question.explanation != null) ...[
+                                        const SizedBox(height: 16),
                                         Container(
+                                          width: double.infinity,
                                           padding: const EdgeInsets.all(12),
                                           decoration: BoxDecoration(
-                                            color: Colors.blue[50],
+                                            color:
+                                                Colors.amber.withOpacity(0.1),
                                             borderRadius:
                                                 BorderRadius.circular(8),
                                             border: Border.all(
-                                                color: Colors.blue[300]!),
+                                                color: Colors.amber.shade300),
                                           ),
                                           child: Column(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              Text(
-                                                "Câu trả lời của bạn:",
+                                              const Text(
+                                                'Giải thích:',
                                                 style: TextStyle(
-                                                  color: Colors.grey[700],
-                                                  fontWeight: FontWeight.w500,
-                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.amber,
                                                 ),
                                               ),
-                                              const SizedBox(height: 8),
-                                              Container(
-                                                width: double.infinity,
-                                                padding:
-                                                    const EdgeInsets.all(8),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.white,
-                                                  borderRadius:
-                                                      BorderRadius.circular(6),
-                                                  border: Border.all(
-                                                    color: isCorrect
-                                                        ? Colors.green
-                                                        : Colors.red,
-                                                  ),
-                                                ),
-                                                child: Text(
-                                                  userSelectedAnswers[index]
-                                                          .isEmpty
-                                                      ? "(Không có câu trả lời)"
-                                                      : userSelectedAnswers[
-                                                          index],
-                                                  style: TextStyle(
-                                                    color: isCorrect
-                                                        ? Colors.green[800]
-                                                        : Colors.red[800],
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(question.explanation!),
                                             ],
-                                          ),
-                                        ),
-                                      ],
-
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        'Đáp án đúng:',
-                                        style: TextStyle(
-                                          color: Colors.grey[600],
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green[50],
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                          border: Border.all(
-                                            color: Colors.green[100]!,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          questionData.answer,
-                                          style: const TextStyle(
-                                            color: Colors.green,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-
-                                      // Add explanation section if available
-                                      if (questionData.explanation != null &&
-                                          questionData
-                                              .explanation!.isNotEmpty) ...[
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          'Giải thích:',
-                                          style: TextStyle(
-                                            color: Colors.grey[600],
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Container(
-                                          width: double.infinity,
-                                          padding: const EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            color: Colors.blue[50],
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                            border: Border.all(
-                                              color: Colors.blue[100]!,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            questionData.explanation!,
-                                            style: TextStyle(
-                                              color: Colors.blue[800],
-                                            ),
                                           ),
                                         ),
                                       ],
@@ -462,74 +477,44 @@ class SummaryScreen extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 16),
                     child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () {
-                              // Refresh the appropriate exam list based on type
-                              final examProvider = Provider.of<ExamProvider>(
-                                  context,
-                                  listen: false);
-
-                              final examType =
-                                  examProvider.currentExam?.type ?? 'weekly';
-                              examProvider.refreshExams(examType).then((_) {
-                                Navigator.pop(context, true);
-                              });
-                            },
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                        ElevatedButton.icon(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.arrow_back),
+                          label: const Text('Quay lại'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.blue[800],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
                               side: BorderSide(color: Colors.blue[800]!),
                             ),
-                            child: const Text(
-                              'Quay lại',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 12),
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              final examProvider = Provider.of<ExamProvider>(
-                                  context,
-                                  listen: false);
-
-                              // Return true to original screen to indicate a refresh is needed
-                              Navigator.pop(context, true);
-
-                              // Then start the quiz again
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => QuizScreen(
-                                    examId: examId,
-                                    title: examTitle,
-                                  ),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(
+                                builder: (context) => QuizScreen(
+                                  examId: widget.examId,
+                                  title: widget.examTitle,
                                 ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[800],
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
                               ),
+                            );
+                          },
+                          icon: const Icon(Icons.replay),
+                          label: const Text('Làm lại'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue[800],
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
                             ),
-                            child: const Text(
-                              'Làm lại',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white,
-                              ),
-                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 12),
                           ),
                         ),
                       ],
@@ -546,32 +531,47 @@ class SummaryScreen extends StatelessWidget {
 
   Widget _buildSubmissionStatus() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.red[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red[300]!),
+        color: Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline, color: Colors.red),
+          const Icon(Icons.warning, color: Colors.orange),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Không thể gửi kết quả bài kiểm tra',
+                const Text(
+                  'Cảnh báo',
                   style: TextStyle(
-                    color: Colors.red,
                     fontWeight: FontWeight.bold,
+                    color: Colors.orange,
                   ),
                 ),
-                SizedBox(height: 4),
-                Text(
-                  'Kết quả của bạn sẽ không được lưu. Vui lòng thử lại.',
-                  style: TextStyle(color: Colors.red),
+                const SizedBox(height: 4),
+                const Text(
+                  'Đã xảy ra lỗi khi gửi kết quả của bạn. Kết quả có thể không được lưu.',
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    // Attempt to resubmit the result
+                    Provider.of<ExamProvider>(context, listen: false)
+                        .submitExamResult(widget.examId, widget.score);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: const Text('Thử lại'),
                 ),
               ],
             ),
@@ -582,25 +582,22 @@ class SummaryScreen extends StatelessWidget {
   }
 
   Widget _buildScoreCircle(
-      BuildContext context, String title, String value, Color color) {
+      BuildContext context, String label, String value, Color color) {
     return Column(
       children: [
         Container(
-          width: 60,
-          height: 60,
+          width: 70,
+          height: 70,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
             shape: BoxShape.circle,
-            border: Border.all(
-              color: color,
-              width: 2,
-            ),
+            color: color.withOpacity(0.1),
+            border: Border.all(color: color, width: 2),
           ),
           child: Center(
             child: Text(
               value,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
@@ -609,19 +606,20 @@ class SummaryScreen extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          title,
+          label,
           style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[600],
+            color: Colors.grey[700],
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
     );
   }
 
-  Color _getScoreColor(int percentage) {
-    if (percentage >= 80) return Colors.green;
-    if (percentage >= 50) return Colors.amber;
+  Color _getScoreColor(int scorePercentage) {
+    if (scorePercentage >= 80) return Colors.green;
+    if (scorePercentage >= 60) return Colors.amber;
+    if (scorePercentage >= 40) return Colors.orange;
     return Colors.red;
   }
 

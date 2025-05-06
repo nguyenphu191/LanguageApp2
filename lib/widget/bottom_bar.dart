@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:language_app/DuyAnhT/test_screen.dart';
-import 'package:language_app/HungNM/profile/profile_sceen.dart';
-import 'package:language_app/PhuNV/Vocab/vocabulary_select_screen.dart';
-import 'package:language_app/PhuNV/home_screen.dart';
-import 'package:language_app/HongNM/exercise_screen.dart';
+import 'package:language_app/duy_anh/test_screen.dart';
+import 'package:language_app/hung_nm/profile/profile_sceen.dart';
+import 'package:language_app/phu_nv/Vocab/vocabulary_select_screen.dart';
+import 'package:language_app/phu_nv/home_screen.dart';
+import 'package:language_app/hong_nm/exercise_screen.dart';
 import 'package:language_app/res/imagesLA/AppImages.dart';
 import 'package:language_app/res/theme/app_colors.dart';
 

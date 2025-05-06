@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:language_app/PhuNV/LoginSignup/login_screen.dart';
+import 'package:language_app/phu_nv/LoginSignup/login_screen.dart';
 import 'package:language_app/provider/exam_provider.dart';
 import 'package:language_app/provider/exercise_provider.dart';
 import 'package:language_app/provider/language_provider.dart';
@@ -13,6 +13,7 @@ import 'package:language_app/provider/auth_provider.dart';
 import 'package:language_app/provider/topic_provider.dart';
 import 'package:language_app/provider/user_provider.dart';
 import 'package:language_app/provider/vocabulary_provider.dart';
+import 'package:language_app/provider/study_plans_provider.dart';
 import 'package:language_app/res/imagesLA/AppImages.dart';
 import 'package:language_app/service/local_notification_service.dart';
 import 'package:language_app/utils/baseurl.dart';
@@ -44,8 +45,8 @@ Future<void> main() async {
   };
 
   // Request permissions
-  await Permission.microphone.request();
-  await Permission.storage.request();
+  // await Permission.microphone.request();
+  // await Permission.storage.request();
 
   // Initialize notifications
   if (!kIsWeb) {
@@ -94,6 +95,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ProgressProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => PostProvider()),
+        ChangeNotifierProvider(create: (_) => StudyPlansProvider()),
         ChangeNotifierProxyProvider<AuthProvider, ExamProvider>(
           create: (context) => ExamProvider(
             baseUrl: UrlUtils.getBaseUrl(),

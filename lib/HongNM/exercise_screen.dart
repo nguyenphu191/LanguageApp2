@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:language_app/HongNM/level_screen.dart';
-import 'package:language_app/provider/progress_provider.dart';
+import 'package:language_app/provider/exercise_provider.dart';
 import 'package:language_app/res/imagesLA/AppImages.dart';
 import 'package:language_app/widget/bottom_bar.dart';
 import 'package:language_app/widget/top_bar.dart';
@@ -17,6 +17,7 @@ class _ExercisescreenState extends State<Exercisescreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
+  bool isLoading = false;
   @override
   void initState() {
     super.initState();
@@ -29,6 +30,10 @@ class _ExercisescreenState extends State<Exercisescreen>
       curve: Curves.easeInOut,
     );
     _controller.forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final exProvider = Provider.of<ExerciseProvider>(context, listen: false);
+      exProvider.fetchProgress();
+    });
   }
 
   @override
@@ -37,52 +42,74 @@ class _ExercisescreenState extends State<Exercisescreen>
     super.dispose();
   }
 
-  final List<Map<String, dynamic>> exerciseTypes = [
-    {
-      'title': 'Ngữ pháp',
-      'subtitle': 'Luyện tập cấu trúc và quy tắc ngôn ngữ',
-      'img': AppImages.searchdetail,
-      'color': Color(0xFF4A6572),
-      'cardColor': Color(0xFFF3F8FF),
-      'icon': Icons.menu_book,
-      'type': 'Ngữ pháp',
-      'completedLessons': 7,
-      'totalLessons': 12,
-    },
-    {
-      'title': 'Nghe',
-      'subtitle': 'Rèn luyện kỹ năng nghe và hiểu',
-      'img': AppImages.listen,
-      'color': Color(0xFF689F38),
-      'cardColor': Color(0xFFF1F8E9),
-      'icon': Icons.headset,
-      'type': 'Nghe',
-      'completedLessons': 4,
-      'totalLessons': 10,
-    },
-    {
-      'title': 'Phát âm',
-      'subtitle': 'Thực hành phát âm chuẩn xác',
-      'img': AppImages.speak,
-      'color': Color(0xFFEF6C00),
-      'cardColor': Color(0xFFFFF3E0),
-      'icon': Icons.mic,
-      'type': 'Phát âm',
-      'completedLessons': 3,
-      'totalLessons': 8,
-    },
-  ];
+  Future<void> _fetchProgress() async {
+    setState(() {
+      isLoading = true;
+    });
+    bool result = await Provider.of<ExerciseProvider>(context, listen: false)
+        .fetchProgress();
+    if (result) {
+      setState(() {
+        isLoading = false;
+      });
+    } else {
+      setState(() {
+        isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lỗi khi tải dữ liệu bài tập'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final pix = size.width / 375;
 
-    return Consumer<ProgressProvider>(
-        builder: (context, progressProvider, child) {
-      if (progressProvider.isLoading) {
+    return Consumer<ExerciseProvider>(builder: (context, exProvider, child) {
+      if (exProvider.isLoading || isLoading) {
         return const Center(child: CircularProgressIndicator());
       }
+      final List<Map<String, dynamic>> exerciseTypes = [
+        {
+          'title': 'Ngữ pháp',
+          'subtitle': 'Luyện tập cấu trúc và quy tắc ngôn ngữ',
+          'img': AppImages.searchdetail,
+          'color': Color(0xFF4A6572),
+          'cardColor': Color(0xFFF3F8FF),
+          'icon': Icons.menu_book,
+          'type': 'grammar',
+          'completedLessons': exProvider.grammarExercises['completed'] ?? 0,
+          'totalLessons': exProvider.grammarExercises['total'] ?? 0,
+        },
+        {
+          'title': 'Nghe',
+          'subtitle': 'Rèn luyện kỹ năng nghe và hiểu',
+          'img': AppImages.listen,
+          'color': Color(0xFF689F38),
+          'cardColor': Color(0xFFF1F8E9),
+          'icon': Icons.headset,
+          'type': 'listening',
+          'completedLessons': exProvider.listeningExercises['completed'] ?? 0,
+          'totalLessons': exProvider.listeningExercises['total'] ?? 0,
+        },
+        {
+          'title': 'Phát âm',
+          'subtitle': 'Thực hành phát âm chuẩn xác',
+          'img': AppImages.speak,
+          'color': Color(0xFFEF6C00),
+          'cardColor': Color(0xFFFFF3E0),
+          'icon': Icons.mic,
+          'type': 'speaking',
+          'completedLessons': exProvider.speakingExercises['completed'] ?? 0,
+          'totalLessons': exProvider.speakingExercises['total'] ?? 0,
+        },
+      ];
+
       return Scaffold(
         body: Container(
           decoration: BoxDecoration(
@@ -260,6 +287,18 @@ class _ExercisescreenState extends State<Exercisescreen>
     final size = MediaQuery.of(context).size;
     final pix = size.width / 375;
 
+    // Tính phần trăm tiến độ, đảm bảo không chia cho 0
+    final double progressPercentage =
+        totalLessons > 0 ? (completedLessons / totalLessons) : 0.0;
+
+    // Tính chiều rộng thanh tiến độ
+    final double progressWidth =
+        totalLessons > 0 ? progressPercentage * (size.width - 32 * pix) : 0.0;
+
+    // Tính phần trăm hiển thị
+    final int displayPercentage =
+        totalLessons > 0 ? (progressPercentage * 100).toInt() : 0;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -391,8 +430,7 @@ class _ExercisescreenState extends State<Exercisescreen>
                       // Progress
                       Container(
                         height: 6 * pix,
-                        width: (completedLessons / totalLessons) *
-                            (size.width - 32 * pix),
+                        width: progressWidth,
                         decoration: BoxDecoration(
                           color: color,
                           borderRadius: BorderRadius.circular(10 * pix),
@@ -405,7 +443,7 @@ class _ExercisescreenState extends State<Exercisescreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Tiến độ: ${(completedLessons / totalLessons * 100).toInt()}%',
+                        'Tiến độ: $displayPercentage%',
                         style: TextStyle(
                           fontSize: 12 * pix,
                           color: Colors.grey.shade600,
@@ -422,7 +460,7 @@ class _ExercisescreenState extends State<Exercisescreen>
                           borderRadius: BorderRadius.circular(12 * pix),
                         ),
                         child: Text(
-                          'Tiếp tục',
+                          totalLessons > 0 ? 'Tiếp tục' : 'Bắt đầu',
                           style: TextStyle(
                             fontSize: 12 * pix,
                             fontWeight: FontWeight.w600,

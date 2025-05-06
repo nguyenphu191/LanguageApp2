@@ -1,6 +1,5 @@
 class QuestionModel {
   int id;
-
   String question;
   List<String> options;
   String answer;
@@ -15,10 +14,10 @@ class QuestionModel {
   });
   factory QuestionModel.fromJson(Map<String, dynamic> json) {
     return QuestionModel(
-      question: json['question'],
-      options: List<String>.from(json['options']),
-      answer: json['answer'],
-      hint: json['hint'],
+      question: json['question'] ?? 'No question',
+      options: List<String>.from(json['options']) ?? [],
+      answer: json['answer'] ?? 'No answer',
+      hint: json['hint'] ?? 'No hint',
       id: json['id'] ?? 0,
     );
   }

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:language_app/Models/post_model.dart';
 import 'package:language_app/PhuNV/Notification/notification_screen.dart';
+import 'package:language_app/provider/post_provider.dart';
+import 'package:language_app/provider/user_provider.dart';
 import 'package:language_app/widget/top_bar.dart';
+import 'package:provider/provider.dart';
 import 'forum_detail_page.dart';
 import 'create_post_page.dart';
-import '../profile/profile_sceen.dart';
-import 'topic_page.dart';
 import 'search_page.dart';
-import './models/forum_post.dart';
 import './widgets/forum_post_card.dart';
 
 class CommunityForumPage extends StatefulWidget {
@@ -21,6 +22,8 @@ class _CommunityForumPageState extends State<CommunityForumPage>
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   String _selectedFilter = 'Tất cả';
+  bool _isLoading = false;
+  bool _isLiking = false;
   final List<String> _filters = [
     'Tất cả',
     'Ngữ pháp',
@@ -31,71 +34,33 @@ class _CommunityForumPageState extends State<CommunityForumPage>
     'Khác'
   ];
 
-  final List<ForumPost> _mockPosts = [
-    ForumPost(
-      id: '1',
-      title: 'Cách học từ vựng hiệu quả',
-      content:
-          'Tôi muốn chia sẻ phương pháp học từ vựng hiệu quả mà tôi đã áp dụng và cải thiện vốn từ của mình...',
-      authorName: 'Mai Anh',
-      authorAvatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-      postedTime: DateTime.now().subtract(const Duration(hours: 2)),
-      imageUrls: ['https://picsum.photos/id/1/800/400'],
-      likes: 24,
-      comments: 8,
-      topics: ['Từ vựng', 'Học tập'],
-    ),
-    ForumPost(
-      id: '2',
-      title: 'Kinh nghiệm luyện thi IELTS',
-      content:
-          'Sau một thời gian dài ôn luyện, tôi đã đạt được band điểm 7.5 IELTS. Hôm nay tôi muốn chia sẻ hành trình và kinh nghiệm của mình...',
-      authorName: 'Quang Minh',
-      authorAvatar: 'https://randomuser.me/api/portraits/men/32.jpg',
-      postedTime: DateTime.now().subtract(const Duration(days: 1)),
-      imageUrls: ['https://picsum.photos/id/20/800/400'],
-      likes: 56,
-      comments: 20,
-      topics: ['IELTS', 'Kinh nghiệm'],
-    ),
-    ForumPost(
-      id: '3',
-      title: 'Có nên học ngữ pháp trước khi tập nói?',
-      content:
-          'Tôi là người mới bắt đầu học tiếng Anh và đang phân vân giữa việc nên tập trung vào ngữ pháp trước hay nên luyện nói trước...',
-      authorName: 'Thu Hà',
-      authorAvatar: 'https://randomuser.me/api/portraits/women/22.jpg',
-      postedTime: DateTime.now().subtract(const Duration(days: 2)),
-      likes: 12,
-      comments: 32,
-      topics: ['Ngữ pháp', 'Nói'],
-    ),
-    ForumPost(
-      id: '4',
-      title: 'Chia sẻ tài liệu học tiếng Anh miễn phí',
-      content:
-          'Chào mọi người, tôi muốn chia sẻ một số tài liệu học tiếng Anh miễn phí mà tôi thấy rất hữu ích...',
-      authorName: 'Đức Thắng',
-      authorAvatar: 'https://randomuser.me/api/portraits/men/62.jpg',
-      postedTime: DateTime.now().subtract(const Duration(days: 3)),
-      imageUrls: [
-        'https://picsum.photos/id/15/800/400',
-        'https://picsum.photos/id/25/800/400'
-      ],
-      likes: 78,
-      comments: 14,
-      topics: ['Tài liệu', 'Miễn phí'],
-    ),
-  ];
-
-  List<ForumPost> _filteredPosts = [];
-
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _filteredPosts = List.from(_mockPosts);
+
     _tabController.addListener(_filterPosts);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final postProvider = Provider.of<PostProvider>(context, listen: false);
+
+    try {
+      await postProvider.fetchPosts();
+    } catch (e) {
+      debugPrint('Error loading posts: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -104,51 +69,82 @@ class _CommunityForumPageState extends State<CommunityForumPage>
     _searchController.dispose();
     super.dispose();
   }
+  Future<void> _likePost(PostModel post) async {
+    // Tránh double click
+    if (_isLiking) return;
 
-  void _filterPosts() {
     setState(() {
-      if (_selectedFilter == 'Tất cả') {
-        _filteredPosts = List.from(_mockPosts);
-      } else {
-        _filteredPosts = _mockPosts
-            .where((post) => post.topics.contains(_selectedFilter))
-            .toList();
-      }
-
-      if (_tabController.index == 1) {
-        _filteredPosts.sort((a, b) => b.likes.compareTo(a.likes));
-      } else if (_tabController.index == 2) {
-        // Logic cho tab "Đang theo dõi"
-      }
+      _isLiking = true;
     });
+
+    try {
+      final userId = Provider.of<UserProvider>(context, listen: false).user?.id;
+      if (post.likes!.any((like) => like.userId == userId)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bạn đã thích bài viết này')),
+        );
+        setState(() {
+          _isLiking = false;
+        });
+        return;
+      }
+      final postProvider = Provider.of<PostProvider>(context, listen: false);
+      final success = await postProvider.likePost(int.parse(post.id!));
+
+      if (success) {
+        setState(() {
+          _isLiking = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã thích bài viết')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không thể thích bài viết')),
+        );
+        setState(() {
+          _isLiking = false;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi: ${e.toString()}')),
+      );
+      setState(() {
+        _isLiking = false;
+      });
+    }
   }
 
-  void _navigateToCreatePost() {
-    Navigator.push(
+  void _filterPosts() {
+    final postProvider = Provider.of<PostProvider>(context, listen: false);
+    // Gọi notifyListeners để cập nhật UI khi tab thay đổi
+    postProvider.notifyListeners();
+  }
+
+  void _navigateToCreatePost() async {
+    // Sử dụng await để đợi khi người dùng quay lại từ màn hình tạo bài viết
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const CreatePostPage()),
     );
+
+    // Nếu có kết quả trả về và là true, thì cập nhật lại danh sách bài viết
+    if (result == true) {
+      _loadData();
+    }
   }
 
-  void _navigateToPostDetail(ForumPost post) {
-    Navigator.push(
+  void _navigateToPostDetail(PostModel post) async {
+    // Sử dụng await để đợi khi người dùng quay lại từ màn hình chi tiết bài viết
+    await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => ForumDetailPage(post: post)),
     );
-  }
 
-  void _navigateToUserProfile(String userId, String userName) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const ProfileScreen()),
-    );
-  }
-
-  void _navigateToTopicPage(String topic) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => TopicPage(topic: topic)),
-    );
+    // Khi quay lại từ màn hình chi tiết, giao diện sẽ tự động cập nhật
+    // vì đã sử dụng Consumer với PostProvider
   }
 
   void _navigateToNotifications() {
@@ -200,77 +196,104 @@ class _CommunityForumPageState extends State<CommunityForumPage>
             left: 0,
             right: 0,
             bottom: 0,
-            child: NestedScrollView(
-              headerSliverBuilder: (context, innerBoxIsScrolled) {
-                return [
-                  SliverToBoxAdapter(
-                    child: Column(
-                      children: [
-                        // TabBar
-                        Container(
-                          color: Colors.white,
-                          child: TabBar(
-                            controller: _tabController,
-                            labelColor: Theme.of(context).primaryColor,
-                            unselectedLabelColor: Colors.grey,
-                            indicatorColor: Theme.of(context).primaryColor,
-                            tabs: const [
-                              Tab(text: 'Mới nhất'),
-                              Tab(text: 'Phổ biến'),
-                              Tab(text: 'Đang theo dõi'),
-                            ],
-                          ),
-                        ),
+            child:
+                Consumer<PostProvider>(builder: (context, postProvider, child) {
+              if (_isLoading || postProvider.isLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-                        // Filter Chips
-                        Container(
-                          height: 60,
-                          color: Colors.grey[50],
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 8),
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: _filters.length,
-                            itemBuilder: (context, index) {
-                              final filter = _filters[index];
-                              return Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 4),
-                                child: ChoiceChip(
-                                  label: Text(filter),
-                                  selected: _selectedFilter == filter,
-                                  onSelected: (selected) {
-                                    if (selected) {
-                                      setState(() {
-                                        _selectedFilter = filter;
-                                        _filterPosts();
-                                      });
-                                    }
-                                  },
-                                ),
-                              );
-                            },
+              // Lọc bài viết dựa trên bộ lọc đã chọn
+              List<PostModel> filteredPosts = postProvider.posts;
+              if (_selectedFilter != 'Tất cả') {
+                filteredPosts = postProvider.posts
+                    .where(
+                        (post) => post.tags?.contains(_selectedFilter) ?? false)
+                    .toList();
+              }
+
+              // Sắp xếp bài viết dựa trên tab đang chọn
+              if (_tabController.index == 1) {
+                // Tab "Phổ biến" - sắp xếp theo số lượt thích
+                filteredPosts.sort((a, b) =>
+                    (b.likes?.length ?? 0).compareTo(a.likes?.length ?? 0));
+              } else if (_tabController.index == 0) {
+                // Tab "Mới nhất" - sắp xếp theo thời gian tạo
+                filteredPosts.sort((a, b) => (b.createdAt ?? DateTime(1970))
+                    .compareTo(a.createdAt ?? DateTime(1970)));
+              }
+              // Tab "Đang theo dõi" có thể được thêm logic ở đây
+
+              return NestedScrollView(
+                headerSliverBuilder: (context, innerBoxIsScrolled) {
+                  return [
+                    SliverToBoxAdapter(
+                      child: Column(
+                        children: [
+                          // TabBar
+                          Container(
+                            color: Colors.white,
+                            child: TabBar(
+                              controller: _tabController,
+                              labelColor: Theme.of(context).primaryColor,
+                              unselectedLabelColor: Colors.grey,
+                              indicatorColor: Theme.of(context).primaryColor,
+                              tabs: const [
+                                Tab(text: 'Mới nhất'),
+                                Tab(text: 'Phổ biến'),
+                                Tab(text: 'Đang theo dõi'),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+
+                          // Filter Chips
+                          Container(
+                            height: 60,
+                            color: Colors.grey[50],
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 8),
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _filters.length,
+                              itemBuilder: (context, index) {
+                                final filter = _filters[index];
+                                return Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 4),
+                                  child: ChoiceChip(
+                                    label: Text(filter),
+                                    selected: _selectedFilter == filter,
+                                    onSelected: (selected) {
+                                      if (selected) {
+                                        setState(() {
+                                          _selectedFilter = filter;
+                                        });
+                                      }
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ];
-              },
-              body: TabBarView(
-                controller: _tabController,
-                children: [
-                  // Tab Mới nhất
-                  _buildPostList(),
+                  ];
+                },
+                body: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // Tab Mới nhất
+                    _buildPostList(filteredPosts),
 
-                  // Tab Phổ biến
-                  _buildPostList(),
+                    // Tab Phổ biến
+                    _buildPostList(filteredPosts),
 
-                  // Tab Đang theo dõi
-                  _buildPostList(),
-                ],
-              ),
-            ),
+                    // Tab Đang theo dõi
+                    _buildPostList(filteredPosts),
+                  ],
+                ),
+              );
+            }),
           ),
         ],
       ),
@@ -282,25 +305,19 @@ class _CommunityForumPageState extends State<CommunityForumPage>
     );
   }
 
-  Widget _buildPostList() {
+  Widget _buildPostList(List<PostModel> posts) {
     return RefreshIndicator(
-      onRefresh: () async {
-        await Future.delayed(const Duration(seconds: 1));
-        _filterPosts();
-      },
-      child: _filteredPosts.isEmpty
+      onRefresh: _loadData,
+      child: posts.isEmpty
           ? const Center(child: Text('Không có bài viết nào phù hợp'))
           : ListView.builder(
               padding: const EdgeInsets.all(8),
-              itemCount: _filteredPosts.length,
+              itemCount: posts.length,
               itemBuilder: (context, index) {
-                final post = _filteredPosts[index];
+                final post = posts[index];
                 return ForumPostCard(
                   post: post,
                   onTap: () => _navigateToPostDetail(post),
-                  onAuthorTap: () => _navigateToUserProfile(
-                      'author-${post.id}', post.authorName),
-                  onTopicTap: (topic) => _navigateToTopicPage(topic),
                 );
               },
             ),

@@ -1,44 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:language_app/HongNM/do_grammar_screen.dart';
 import 'package:language_app/Models/exercise_model.dart';
+import 'package:language_app/provider/exercise_provider.dart';
 import 'package:language_app/res/theme/app_colors.dart';
 import 'package:language_app/widget/top_bar.dart';
+import 'package:provider/provider.dart';
 
 class Lessonscreen extends StatefulWidget {
-  const Lessonscreen({super.key, required this.title});
-  final String title;
+  const Lessonscreen({super.key, required this.ex});
+  final ExerciseModel ex;
   @override
   State<Lessonscreen> createState() => _LessonscreenState();
 }
 
 class _LessonscreenState extends State<Lessonscreen> {
-  // Sử dụng ExerciseModel thay vì hardcode
-  ExerciseModel exercises = ExerciseModel(
-    id: 1,
-    name: 'Bài tập Hiện tại đơn',
-    type: 'grammar',
-    level: 'easy',
-    audio: '',
-    theory:
-        "Thì hiện tại đơn diễn tả một hành động xảy ra thường xuyên, thói quen hoặc sự thật hiển nhiên.\n"
-        "- Cấu trúc: \n"
-        "  + Khẳng định: S + V(s/es) + O \n"
-        "  + Phủ định: S + do/does + not + V + O \n"
-        "  + Nghi vấn: Do/Does + S + V + O ?"
-        "Thì hiện tại đơn diễn tả một hành động xảy ra thường xuyên, thói quen hoặc sự thật hiển nhiên.\n"
-        "- Cấu trúc: \n"
-        "  + Khẳng định: S + V(s/es) + O \n"
-        "  + Phủ định: S + do/does + not + V + O \n"
-        "  + Nghi vấn: Do/Does + S + V + O ?"
-        "Thì hiện tại đơn diễn tả một hành động xảy ra thường xuyên, thói quen hoặc sự thật hiển nhiên.\n"
-        "- Cấu trúc: \n"
-        "  + Khẳng định: S + V(s/es) + O \n"
-        "  + Phủ định: S + do/does + not + V + O \n"
-        "  + Nghi vấn: Do/Does + S + V + O ?",
-    description: 'Bài tập về thì hiện tại đơn',
-    imageUrl: 'assets/images/grammar.png',
-    duration: 15,
-  );
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ExerciseProvider>(context, listen: false)
+          .fetchExercise(widget.ex.id);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,78 +44,109 @@ class _LessonscreenState extends State<Lessonscreen> {
               top: 0,
               right: 0,
               left: 0,
-              child: TopBar(title: widget.title),
+              child: TopBar(title: widget.ex.name),
             ),
-            Positioned(
-              top: 116 * pix,
-              right: 0,
-              left: 0,
-              bottom: 16 * pix,
-              child: exercises.theory != null
-                  ? Container(
-                      width: size.width - 32 * pix,
-                      height: size.height - 150 * pix,
-                      margin: EdgeInsets.symmetric(horizontal: 16 * pix),
-                      padding: EdgeInsets.all(16 * pix),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.all(Radius.circular(16)),
-                      ),
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: [
-                            Container(
-                              height: 36 * pix,
-                              width: size.width,
-                              child: Text(
-                                "Lý thuyết:",
-                                style: TextStyle(
-                                    fontSize: 22, fontWeight: FontWeight.bold),
-                                textAlign: TextAlign.center,
+            Consumer<ExerciseProvider>(builder: (context, exProvider, child) {
+              if (exProvider.isLoading) {
+                return Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
+              final exercise = exProvider.exercise;
+
+              return Positioned(
+                top: 116 * pix,
+                right: 0,
+                left: 0,
+                bottom: 16 * pix,
+                child: exercise?.theory != null
+                    ? Container(
+                        width: size.width - 32 * pix,
+                        height: size.height - 150 * pix,
+                        margin: EdgeInsets.symmetric(horizontal: 16 * pix),
+                        padding: EdgeInsets.all(16 * pix),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.all(Radius.circular(16)),
+                        ),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            children: [
+                              Container(
+                                height: 36 * pix,
+                                width: size.width,
+                                child: Text(
+                                  "Lý thuyết:",
+                                  style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                                ),
                               ),
-                            ),
-                            SizedBox(height: 10),
-                            Text(
-                              exercises.theory!,
-                              style: TextStyle(
-                                  fontSize: 18 * pix,
-                                  fontFamily: 'BeVietnamPro'),
-                            ),
-                            SizedBox(height: 126 * pix),
-                          ],
+                              SizedBox(height: 10),
+                              Text(
+                                exercise!.theory,
+                                style: TextStyle(
+                                    fontSize: 18 * pix,
+                                    fontFamily: 'BeVietnamPro'),
+                              ),
+                              SizedBox(height: 126 * pix),
+                            ],
+                          ),
+                        ),
+                      )
+                    : Container(
+                        width: size.width - 32 * pix,
+                        height: size.height - 150 * pix,
+                        margin: EdgeInsets.symmetric(horizontal: 16 * pix),
+                        padding: EdgeInsets.all(16 * pix),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.all(Radius.circular(16)),
+                        ),
+                        child: Center(
+                          child: Text(
+                            "Chưa có lý thuyết",
+                            style: TextStyle(
+                                fontSize: 18 * pix, fontFamily: 'BeVietnamPro'),
+                          ),
                         ),
                       ),
-                    )
-                  : SizedBox.shrink(),
-            ),
-            Positioned(
-              bottom: 32 * pix,
-              right: 16 * pix,
-              left: 16 * pix,
-              child: _buildExerciseItem(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DoGrammarscreen(
-                        exercise: exercises,
+              );
+            }),
+            Consumer<ExerciseProvider>(builder: (context, exProvider, child) {
+              if (exProvider.isLoading) {
+                return Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
+              final exercise = exProvider.exercise;
+              return Positioned(
+                bottom: 32 * pix,
+                right: 16 * pix,
+                left: 16 * pix,
+                child: _buildExerciseItem(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DoGrammarscreen(
+                          exercise: exercise!,
+                        ),
                       ),
-                    ),
-                  );
-                },
-                exercise: exercises,
-              ),
-            )
+                    );
+                  },
+                ),
+              );
+            })
           ],
         ),
       ),
     );
   }
 
-  // Widget để hiển thị từng bài tập
   Widget _buildExerciseItem({
     required VoidCallback onTap,
-    required ExerciseModel exercise,
   }) {
     final size = MediaQuery.of(context).size;
     final pix = size.width / 375;

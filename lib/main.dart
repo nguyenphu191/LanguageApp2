@@ -5,6 +5,7 @@ import 'package:language_app/provider/exam_provider.dart';
 import 'package:language_app/provider/exercise_provider.dart';
 import 'package:language_app/provider/language_provider.dart';
 import 'package:language_app/provider/notification_provider.dart';
+import 'package:language_app/provider/post_provider.dart';
 import 'package:language_app/provider/progress_provider.dart';
 import 'package:language_app/provider/question_provider.dart';
 import 'package:language_app/provider/theme_provider.dart';
@@ -12,6 +13,11 @@ import 'package:language_app/provider/auth_provider.dart';
 import 'package:language_app/provider/topic_provider.dart';
 import 'package:language_app/provider/user_provider.dart';
 import 'package:language_app/provider/vocabulary_provider.dart';
+import 'package:language_app/provider/vocabulary_game_provider.dart';
+import 'package:language_app/provider/transition_provider.dart';
+import 'package:language_app/provider/vocab_topic_provider.dart';
+import 'package:language_app/provider/vocab_game_screen_provider.dart';
+import 'package:language_app/DuyAnhT/vocab_game/audio_service.dart';
 import 'package:language_app/res/imagesLA/AppImages.dart';
 import 'package:language_app/utils/baseurl.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -87,9 +93,15 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ExerciseProvider()),
         ChangeNotifierProvider(create: (_) => TopicProvider()),
         ChangeNotifierProvider(create: (_) => VocabularyProvider()),
+        ChangeNotifierProvider(create: (_) => VocabularyGameProvider()),
+        ChangeNotifierProvider(create: (_) => TransitionProvider()),
+        ChangeNotifierProvider(create: (_) => VocabularyTopicProvider()),
+        ChangeNotifierProvider(create: (_) => VocabularyGameScreenProvider()),
+        ChangeNotifierProvider(create: (_) => AudioPlaybackService()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ProgressProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => PostProvider()),
         ChangeNotifierProxyProvider<AuthProvider, ExamProvider>(
           create: (context) => ExamProvider(
             baseUrl: UrlUtils.getBaseUrl(),

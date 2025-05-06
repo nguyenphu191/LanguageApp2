@@ -25,9 +25,7 @@ class _TopicwidgetState extends State<Topicwidget> {
       margin: EdgeInsets.symmetric(horizontal: 8 * pix, vertical: 4 * pix),
       width: 180 * pix,
       decoration: BoxDecoration(
-        color: widget.topic.isDone
-            ? const Color.fromARGB(255, 231, 255, 255).withOpacity(0.5)
-            : Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24 * pix),
         boxShadow: [
           BoxShadow(
@@ -56,10 +54,45 @@ class _TopicwidgetState extends State<Topicwidget> {
                   Container(
                     height: 136 * pix,
                     width: 180 * pix,
-                    child: Image.network(
-                      widget.topic.imageUrl,
-                      fit: BoxFit.cover,
-                    ),
+                    child: widget.topic.imageUrl.isNotEmpty
+                        ? Image.network(
+                            widget.topic.imageUrl,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes !=
+                                          null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                          loadingProgress.expectedTotalBytes!
+                                      : null,
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.grey[200],
+                                child: Center(
+                                  child: Icon(
+                                    Icons.image_not_supported,
+                                    color: Colors.grey[400],
+                                    size: 40 * pix,
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : Container(
+                            color: Colors.grey[200],
+                            child: Center(
+                              child: Icon(
+                                Icons.image,
+                                color: Colors.grey[400],
+                                size: 40 * pix,
+                              ),
+                            ),
+                          ),
                   ),
                   Positioned(
                     top: 10 * pix,

@@ -6,6 +6,7 @@ class TopicModel {
   String level;
   String createAt;
   String updateAt;
+  String languageId;
   bool isDone;
 
   TopicModel({
@@ -14,6 +15,7 @@ class TopicModel {
     required this.numbervocabulary,
     required this.imageUrl,
     required this.level,
+    required this.languageId,
     required this.createAt,
     required this.updateAt,
     this.isDone = false,
@@ -25,9 +27,11 @@ class TopicModel {
         numbervocabulary: json['totalVocabs'] ?? 0,
         imageUrl: json['imageUrl'] ?? "",
         level: json['level'].toString() ?? "",
-        createAt: json['createAt'] ?? "",
-        updateAt: json['updateAt'] ?? "",
+        createAt: json['createdAt'] ?? "",
+        updateAt: json['updatedAt'] ?? "",
         isDone: json['hasProgress'] ?? false,
+        languageId:
+            json['language'] != null ? json['language']['id'].toString() : "",
       );
   Map<String, dynamic> toJson() => {
         'topic': topic,

@@ -29,7 +29,7 @@ dependencies:
   fl_chart: ^0.68.0  # Package để vẽ biểu đồ
   flutter_svg: ^2.0.17
   flutter_staggered_grid_view: ^0.7.0  # Dành cho hiển thị dạng lưới với kích thước linh hoạt
-  cached_network_image: ^3.3.0
+  cached_network_image: ^3.4.1
   timeago: ^3.5.0
   image_picker: ^1.1.2
   provider: ^6.1.4

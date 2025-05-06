@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:language_app/Models/exercise_model.dart';
 import 'package:language_app/Models/question_model.dart';
+import 'package:language_app/provider/exercise_provider.dart';
 import 'package:language_app/provider/question_provider.dart';
 import 'package:language_app/widget/top_bar.dart';
 import 'package:provider/provider.dart';
@@ -15,47 +16,17 @@ class DoGrammarscreen extends StatefulWidget {
 class _DoGrammarscreenState extends State<DoGrammarscreen> {
   int currentQuestion = 0;
   int correctAnswers = 0;
-  bool showHint = false;
   String selectedAnswer = "";
   bool answerChecked = false;
+  bool loading = false;
 
-  List<QuestionModel> questions = [
-    QuestionModel(
-      id: 1,
-      question: "What is the capital of France?",
-      options: ["Paris", "London", "Berlin", "Rome"],
-      answer: "Paris",
-      hint: "It's known as the city of love.",
-    ),
-    QuestionModel(
-      id: 2,
-      question: "Choose the correct past tense of 'go':",
-      options: ["goed", "went", "goes", "gone"],
-      answer: "went",
-      hint: "It's an irregular verb.",
-    ),
-    QuestionModel(
-      id: 3,
-      question: "Which one is a synonym of 'happy'?",
-      options: ["angry", "joyful", "sad", "tired"],
-      answer: "joyful",
-      hint: "Think of positive emotions.",
-    ),
-    QuestionModel(
-      id: 4,
-      question: "What is the plural form of 'mouse'?",
-      options: ["mouses", "mices", "mouse", "mice"],
-      answer: "mice",
-      hint: "It's an irregular plural.",
-    ),
-    QuestionModel(
-      id: 5,
-      question: "Which article fits: '___ apple a day keeps the doctor away'?",
-      options: ["An", "A", "The", "No article"],
-      answer: "An",
-      hint: "The word after starts with a vowel sound.",
-    ),
-  ];
+  late List<QuestionModel> questions;
+
+  @override
+  void initState() {
+    super.initState();
+    questions = widget.exercise.questions;
+  }
 
   void checkAnswer(String answer) {
     setState(() {
@@ -69,14 +40,40 @@ class _DoGrammarscreenState extends State<DoGrammarscreen> {
           setState(() {
             currentQuestion++;
             selectedAnswer = "";
-            showHint = false;
             answerChecked = false;
           });
         } else {
-          showResult();
+          createResult(correctAnswers);
         }
       });
     });
+  }
+
+  Future<void> createResult(int) async {
+    setState(() {
+      loading = true;
+    });
+    final exProvider = Provider.of<ExerciseProvider>(context, listen: false);
+    bool res = await exProvider.createResult(
+      widget.exercise.id,
+      (correctAnswers / (questions.length) * 10).round(),
+    );
+    if (res) {
+      setState(() {
+        loading = false;
+      });
+      showResult();
+    } else {
+      setState(() {
+        loading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Có lỗi xảy ra trong quá trình tạo kết quả."),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void showResult() {
@@ -121,7 +118,9 @@ class _DoGrammarscreenState extends State<DoGrammarscreen> {
                   ),
                   SizedBox(width: 10),
                   Text(
-                    "$correctAnswers/${questions.length}",
+                    ((correctAnswers / (questions.length) * 10).round())
+                            .toString() +
+                        " điểm",
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -152,7 +151,6 @@ class _DoGrammarscreenState extends State<DoGrammarscreen> {
                       currentQuestion = 0;
                       correctAnswers = 0;
                       selectedAnswer = "";
-                      showHint = false;
                       answerChecked = false;
                     });
                   },
@@ -169,6 +167,7 @@ class _DoGrammarscreenState extends State<DoGrammarscreen> {
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
+                    Navigator.pop(context);
                     Navigator.pop(context);
                     Navigator.pop(context);
                   },
@@ -365,66 +364,6 @@ class _DoGrammarscreenState extends State<DoGrammarscreen> {
                       );
                     }).toList(),
                     SizedBox(height: 25),
-                    if (!answerChecked)
-                      Column(
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: () =>
-                                setState(() => showHint = !showHint),
-                            icon: Icon(
-                              showHint
-                                  ? Icons.visibility_off
-                                  : Icons.lightbulb_outline,
-                            ),
-                            label: Text(showHint ? "Ẩn gợi ý" : "Hiện gợi ý"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.amber,
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          ),
-                          AnimatedCrossFade(
-                            firstChild: SizedBox(height: 0),
-                            secondChild: Container(
-                              margin: EdgeInsets.only(top: 16),
-                              padding: EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Colors.amber.withOpacity(0.5),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.lightbulb,
-                                    color: Colors.amber,
-                                  ),
-                                  SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      questions[currentQuestion].hint,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            crossFadeState: showHint
-                                ? CrossFadeState.showSecond
-                                : CrossFadeState.showFirst,
-                            duration: Duration(milliseconds: 300),
-                          ),
-                        ],
-                      ),
                     SizedBox(height: 30),
                     if (answerChecked)
                       Container(

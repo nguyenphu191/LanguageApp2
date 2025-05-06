@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:language_app/Models/post_model.dart';
 import './forum_detail_page.dart';
-import './models/forum_post.dart';
 
 class TopicPage extends StatelessWidget {
   final String topic;
@@ -11,7 +11,7 @@ class TopicPage extends StatelessWidget {
   Widget build(BuildContext context) {
     // Mock data
     final posts = [
-      ForumPost(id: '1', title: 'Post 1', content: 'Content 1', authorName: 'User', postedTime: DateTime.now(), topics: [topic]),
+      PostModel(id: '1', title: 'Post 1', content: 'Content 1',),
     ];
 
     return Scaffold(
@@ -39,8 +39,8 @@ class TopicPage extends StatelessWidget {
             child: ListView.builder(
               itemCount: posts.length,
               itemBuilder: (context, index) => ListTile(
-                title: Text(posts[index].title),
-                subtitle: Text(posts[index].content, maxLines: 1, overflow: TextOverflow.ellipsis),
+                title: Text(posts[index].title ?? 'No Title'),
+                subtitle: Text(posts[index].content ?? 'No Content', maxLines: 1, overflow: TextOverflow.ellipsis),
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ForumDetailPage(post: posts[index]))),
               ),
             ),

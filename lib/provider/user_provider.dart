@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:language_app/utils/baseurl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -64,8 +67,11 @@ class UserProvider with ChangeNotifier {
     return -1;
   }
 
-  Future<bool> updateUserInfor(BuildContext context, String? firstName,
-      String? lastName, String language_selected) async {
+  Future<bool> updateUserProfile(
+      {String? firstName,
+      String? lastName,
+      File? profileImage,
+      String? language_selected}) async {
     setLoading(true);
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -76,26 +82,52 @@ class UserProvider with ChangeNotifier {
         return false;
       }
 
-      final url = Uri.parse("${baseUrl}profile/"); // Đảm bảo endpoint đúng
-      final response = await http.put(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token"
-        },
-        body: jsonEncode({
-          "firstName": firstName,
-          "lastName": lastName,
-          "language_selected": language_selected,
-        }),
+      // Xử lý dữ liệu form
+      final formData = FormData();
+
+      // Chỉ thêm các trường không null
+      if (firstName != null) {
+        formData.fields.add(MapEntry("first_name", firstName));
+      }
+
+      if (lastName != null) {
+        formData.fields.add(MapEntry("last_name", lastName));
+      }
+
+      if (language_selected != null) {
+        formData.fields.add(MapEntry("language_selected", language_selected));
+      }
+
+      // Xử lý upload file
+      if (profileImage != null) {
+        final fileName = profileImage.path.split('/').last;
+        formData.files.add(MapEntry(
+          'file',
+          await MultipartFile.fromFile(
+            profileImage.path,
+            filename: fileName,
+          ),
+        ));
+      }
+
+      final dio = Dio();
+      final response = await dio.patch(
+        "${baseUrl}profile",
+        data: formData,
+        options: Options(
+          headers: {"Authorization": "Bearer $token"},
+          contentType: 'multipart/form-data',
+        ),
       );
 
       if (response.statusCode == 200) {
-        await getUserInfo(context);
+        // Cập nhật đối tượng user trong provider
+        final data = response.data;
+        _user = UserModel.fromJson(data['data']);
         notifyListeners();
         return true;
       } else {
-        print("❌ Lỗi tải thông tin người dùng: ${response.statusCode}");
+        print("❌ Lỗi cập nhật thông tin người dùng: ${response.statusCode}");
         return false;
       }
     } catch (e) {

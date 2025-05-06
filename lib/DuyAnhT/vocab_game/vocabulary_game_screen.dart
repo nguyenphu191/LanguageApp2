@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:language_app/DuyAnhT/vocab_game/vocabulary_topic_screen.dart';
 import 'package:language_app/widget/top_bar.dart';
+import 'package:language_app/provider/vocab_game_screen_provider.dart';
+import 'package:provider/provider.dart';
 
-// Dữ liệu mẫu các chủ đề
-final List<Map<String, String>> topics = [
-  {'name': 'Động vật', 'description': 'Từ vựng về động vật'},
-  {'name': 'Thực phẩm', 'description': 'Từ vựng về đồ ăn'},
-  {'name': 'Giao thông', 'description': 'Từ vựng về phương tiện'},
-];
-
-class VocabularyGameScreen extends StatelessWidget {
+class VocabularyGameScreen extends StatefulWidget {
   const VocabularyGameScreen({super.key});
+
+  @override
+  State<VocabularyGameScreen> createState() => _VocabularyGameScreenState();
+}
+
+class _VocabularyGameScreenState extends State<VocabularyGameScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // The provider auto-fetches topics in constructor
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,147 +46,162 @@ class VocabularyGameScreen extends StatelessWidget {
               left: 16 * pix,
               right: 16 * pix,
               bottom: 0,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(16 * pix),
-                    child: Text(
-                      'Chọn Chủ Đề',
-                      style: TextStyle(
-                        fontSize: 24 * pix,
-                        fontFamily: 'BeVietnamPro',
-                        fontWeight: FontWeight.w700,
-                        color:
-                            isDarkMode ? Colors.white : const Color(0xFF1C2526),
-                      ),
+              child: Consumer<VocabularyGameScreenProvider>(
+                  builder: (context, gameProvider, child) {
+                if (gameProvider.isLoading) {
+                  return Center(child: CircularProgressIndicator());
+                }
+
+                if (gameProvider.errorMessage != null) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          gameProvider.errorMessage!,
+                          style: TextStyle(color: Colors.red),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () => gameProvider.fetchTopics(),
+                          child: Text('Thử lại'),
+                        ),
+                      ],
                     ),
-                  ),
-                  SizedBox(height: 8 * pix),
-                  Text(
-                    'Khám phá các trò chơi từ vựng theo chủ đề',
-                    style: TextStyle(
-                      fontSize: 14 * pix,
-                      fontFamily: 'BeVietnamPro',
-                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                    ),
-                  ),
-                  SizedBox(height: 24 * pix),
-                  // Danh sách chủ đề
-                  ...topics.map((topic) {
-                    return Padding(
-                      padding: EdgeInsets.only(bottom: 8 * pix),
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  VocabularyTopicScreen(topic: topic['name']!),
-                            ),
-                          );
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeInOut,
-                          padding: EdgeInsets.all(16 * pix),
-                          decoration: BoxDecoration(
-                            color: isDarkMode
-                                ? const Color(0xFF1E1E2F)
-                                : Colors.white,
-                            borderRadius: BorderRadius.circular(12 * pix),
-                            border: Border.all(
-                              color: isDarkMode
-                                  ? Colors.grey[800]!
-                                  : const Color(0xFFE5E7EB),
-                              width: 1,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black
-                                    .withOpacity(isDarkMode ? 0.3 : 0.05),
-                                spreadRadius: 1,
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(10 * pix),
-                                decoration: BoxDecoration(
-                                  color:
-                                      const Color(0xFF10B981).withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  _getIconForTopic(topic['name']!),
-                                  size: 24 * pix,
-                                  color: const Color(0xFF10B981),
-                                ),
-                              ),
-                              SizedBox(width: 16 * pix),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      topic['name']!,
-                                      style: TextStyle(
-                                        fontSize: 18 * pix,
-                                        fontFamily: 'BeVietnamPro',
-                                        fontWeight: FontWeight.w600,
-                                        color: isDarkMode
-                                            ? Colors.white
-                                            : const Color(0xFF1C2526),
-                                      ),
-                                    ),
-                                    SizedBox(height: 4 * pix),
-                                    Text(
-                                      topic['description']!,
-                                      style: TextStyle(
-                                        fontSize: 14 * pix,
-                                        fontFamily: 'BeVietnamPro',
-                                        color: isDarkMode
-                                            ? Colors.grey[400]
-                                            : Colors.grey[600],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Icon(
-                                Icons.arrow_forward_ios,
-                                size: 18 * pix,
-                                color: const Color(0xFF10B981),
-                              ),
-                            ],
-                          ),
+                  );
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(16 * pix),
+                      child: Text(
+                        'Chọn Chủ Đề',
+                        style: TextStyle(
+                          fontSize: 24 * pix,
+                          fontFamily: 'BeVietnamPro',
+                          fontWeight: FontWeight.w700,
+                          color: isDarkMode
+                              ? Colors.white
+                              : const Color(0xFF1C2526),
                         ),
                       ),
-                    );
-                  }).toList(),
-                ],
-              ),
+                    ),
+                    SizedBox(height: 8 * pix),
+                    Text(
+                      'Khám phá các trò chơi từ vựng theo chủ đề',
+                      style: TextStyle(
+                        fontSize: 14 * pix,
+                        fontFamily: 'BeVietnamPro',
+                        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                      ),
+                    ),
+                    SizedBox(height: 24 * pix),
+                    // Danh sách chủ đề
+                    ...gameProvider.topics.map((topic) {
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: 8 * pix),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    VocabularyTopicScreen(topic: topic.name),
+                              ),
+                            );
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            curve: Curves.easeInOut,
+                            padding: EdgeInsets.all(16 * pix),
+                            decoration: BoxDecoration(
+                              color: isDarkMode
+                                  ? const Color(0xFF1E1E2F)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(12 * pix),
+                              border: Border.all(
+                                color: isDarkMode
+                                    ? Colors.grey[800]!
+                                    : const Color(0xFFE5E7EB),
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black
+                                      .withOpacity(isDarkMode ? 0.3 : 0.05),
+                                  spreadRadius: 1,
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(10 * pix),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF10B981)
+                                        .withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    gameProvider.getIconForTopic(topic.name),
+                                    size: 24 * pix,
+                                    color: const Color(0xFF10B981),
+                                  ),
+                                ),
+                                SizedBox(width: 16 * pix),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        topic.name,
+                                        style: TextStyle(
+                                          fontSize: 18 * pix,
+                                          fontFamily: 'BeVietnamPro',
+                                          fontWeight: FontWeight.w600,
+                                          color: isDarkMode
+                                              ? Colors.white
+                                              : const Color(0xFF1C2526),
+                                        ),
+                                      ),
+                                      SizedBox(height: 4 * pix),
+                                      Text(
+                                        topic.description,
+                                        style: TextStyle(
+                                          fontSize: 14 * pix,
+                                          fontFamily: 'BeVietnamPro',
+                                          color: isDarkMode
+                                              ? Colors.grey[400]
+                                              : Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 18 * pix,
+                                  color: const Color(0xFF10B981),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                );
+              }),
             ),
           ],
         ),
       ),
     );
-  }
-
-  // Hàm chọn icon phù hợp cho từng chủ đề
-  IconData _getIconForTopic(String topicName) {
-    switch (topicName) {
-      case 'Động vật':
-        return Icons.pets;
-      case 'Thực phẩm':
-        return Icons.fastfood;
-      case 'Giao thông':
-        return Icons.directions_car;
-      default:
-        return Icons.book;
-    }
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:language_app/DuyAnhT/exam/exam_screen.dart';
 import 'package:language_app/DuyAnhT/question_game/questions_screen.dart';
-import 'package:language_app/DuyAnhT/vocab_game/vocabulary_game_screen.dart';
+import 'package:language_app/DuyAnhT/vocab_game/vocabulary_game_topics_screen.dart';
+import 'package:language_app/PhuNV/Vocab/vocabulary_topic_screen.dart';
 import 'package:language_app/provider/exam_provider.dart';
 import 'package:language_app/widget/bottom_bar.dart';
 import 'package:language_app/widget/top_bar.dart';
@@ -143,7 +143,7 @@ class _TestScreenState extends State<TestScreen>
                           _buildTaskCard(
                             context: context,
                             icon: Icons.quiz,
-                            title: 'Câu Đố Thích Ứng',
+                            title: 'Trắc nghiệm hàng tuần',
                             subtitle:
                                 'Câu hỏi cá nhân hóa để kiểm tra kiến thức',
                             progress: examProvider
@@ -152,8 +152,11 @@ class _TestScreenState extends State<TestScreen>
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) =>
-                                      const QuestionsScreen()),
+                                builder: (context) => const QuestionsScreen(
+                                  examType: 'weekly',
+                                  title: 'Trắc nghiệm hàng tuần',
+                                ),
+                              ),
                             ),
                             pix: pix,
                           ),
@@ -166,19 +169,22 @@ class _TestScreenState extends State<TestScreen>
                             progress: examProvider
                                 .getCompletionPercentage('vocabGames'),
                             color: const Color(0xFF10B981), // Xanh lá
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
                                   builder: (context) =>
-                                      const VocabularyGameScreen()),
-                            ),
+                                      const VocabularyGameTopicsScreen(),
+                                ),
+                              );
+                            },
                             pix: pix,
                           ),
                           SizedBox(height: 16 * pix),
                           _buildTaskCard(
                             context: context,
                             icon: Icons.analytics,
-                            title: 'Đánh Giá Kỹ Năng',
+                            title: 'Kiểm tra toàn diện',
                             subtitle:
                                 'Bài kiểm tra toàn diện để đánh giá trình độ',
                             progress: examProvider
@@ -187,7 +193,11 @@ class _TestScreenState extends State<TestScreen>
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => const ExamScreen()),
+                                builder: (context) => const QuestionsScreen(
+                                  examType: 'comprehensive',
+                                  title: 'Kiểm tra toàn diện',
+                                ),
+                              ),
                             ),
                             pix: pix,
                           ),

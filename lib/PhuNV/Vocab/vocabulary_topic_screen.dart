@@ -19,6 +19,8 @@ class _VocabularyTopicscreenState extends State<VocabularyTopicscreen>
   bool _isSearching = false;
   String _searchQuery = "";
   bool _isLoading = true;
+  bool _hasError = false;
+  String _errorMessage = "";
 
   @override
   void initState() {
@@ -33,6 +35,8 @@ class _VocabularyTopicscreenState extends State<VocabularyTopicscreen>
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
+      _hasError = false;
+      _errorMessage = "";
     });
 
     final topicProvider = Provider.of<TopicProvider>(context, listen: false);
@@ -42,6 +46,10 @@ class _VocabularyTopicscreenState extends State<VocabularyTopicscreen>
     } catch (e) {
       // Xử lý lỗi nếu cần
       print('Error loading topics: $e');
+      setState(() {
+        _hasError = true;
+        _errorMessage = "Không thể tải danh sách chủ đề. Vui lòng thử lại sau.";
+      });
     } finally {
       setState(() {
         _isLoading = false;
@@ -88,6 +96,49 @@ class _VocabularyTopicscreenState extends State<VocabularyTopicscreen>
               ),
               child: Center(
                 child: CircularProgressIndicator(),
+              ),
+            );
+          }
+
+          // Hiển thị thông báo lỗi nếu có
+          if (_hasError) {
+            return Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.blue.shade200, Colors.indigo.shade50],
+                  stops: const [0.0, 0.7],
+                ),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 50 * pix,
+                    ),
+                    SizedBox(height: 16 * pix),
+                    Text(
+                      _errorMessage,
+                      style: TextStyle(
+                        fontSize: 16 * pix,
+                        color: Colors.red,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 16 * pix),
+                    ElevatedButton(
+                      onPressed: _loadData,
+                      child: Text('Thử lại'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xff165598),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           }

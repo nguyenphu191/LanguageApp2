@@ -15,20 +15,13 @@ class TopicScreen extends StatefulWidget {
 }
 
 class _TopicScreenState extends State<TopicScreen> {
-  String? _selectedLanguageId;
-  int _selectedLevel = 1;
+  int _selectedLevel = 0;
 
-  final List<String> _levels = [
-    'beginner',
-    'intermediate',
-    'advanced',
-    'expert'
-  ];
-  final Map<String, String> _levelNames = {
-    'beginner': 'Cơ bản',
-    'intermediate': 'Trung cấp',
-    'advanced': 'Nâng cao',
-    'expert': 'Chuyên gia',
+  final List<int> _levels = [1, 2, 3];
+  final Map<int, String> _levelNames = {
+    1: 'Cơ bản',
+    2: 'Trung cấp',
+    3: 'Nâng cao',
   };
 
   @override
@@ -38,11 +31,6 @@ class _TopicScreenState extends State<TopicScreen> {
     // Khởi tạo và lấy danh sách chủ đề và ngôn ngữ
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final topicProvider = Provider.of<TopicProvider>(context, listen: false);
-      final languageProvider =
-          Provider.of<LanguageProvider>(context, listen: false);
-
-      // Lấy danh sách ngôn ngữ
-      languageProvider.fetchLanguages();
 
       // Lấy tất cả chủ đề (không lọc)
       topicProvider.fetchTopics();
@@ -51,9 +39,13 @@ class _TopicScreenState extends State<TopicScreen> {
 
   // Hàm lọc chủ đề theo ngôn ngữ và cấp độ
   void _filterTopics() {
+    if (_selectedLevel == 0) {
+      // Nếu chọn "Tất cả cấp độ" thì lấy toàn bộ chủ đề
+      Provider.of<TopicProvider>(context, listen: false).fetchTopics();
+      return;
+    }
     final topicProvider = Provider.of<TopicProvider>(context, listen: false);
     topicProvider.fetchTopics(
-      languageId: _selectedLanguageId,
       level: _selectedLevel,
     );
   }
@@ -61,8 +53,7 @@ class _TopicScreenState extends State<TopicScreen> {
   // Reset filter
   void _resetFilter() {
     setState(() {
-      _selectedLanguageId = null;
-      _selectedLevel = 1;
+      _selectedLevel = 0;
     });
 
     Provider.of<TopicProvider>(context, listen: false).fetchTopics();
@@ -84,7 +75,6 @@ class _TopicScreenState extends State<TopicScreen> {
           ).then((_) {
             // Refresh the topic list when returning from AddTopicScreen
             Provider.of<TopicProvider>(context, listen: false).fetchTopics(
-              languageId: _selectedLanguageId,
               level: _selectedLevel,
             );
           });
@@ -125,68 +115,6 @@ class _TopicScreenState extends State<TopicScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: Consumer<LanguageProvider>(
-                            builder: (context, languageProvider, child) {
-                              if (languageProvider.isLoading) {
-                                return Center(
-                                    child: CircularProgressIndicator());
-                              }
-
-                              return DropdownButtonFormField<String>(
-                                decoration: InputDecoration(
-                                  labelText: 'Ngôn ngữ',
-                                  border: OutlineInputBorder(),
-                                  contentPadding:
-                                      EdgeInsets.symmetric(horizontal: 10),
-                                ),
-                                value: _selectedLanguageId,
-                                items: [
-                                  DropdownMenuItem<String>(
-                                    value: null,
-                                    child: Text('Tất cả ngôn ngữ',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.normal,
-                                          fontSize: 12 * pix,
-                                        )),
-                                  ),
-                                  ...languageProvider.languages.map((language) {
-                                    return DropdownMenuItem<String>(
-                                      value: language.id,
-                                      child: Row(
-                                        children: [
-                                          if (language.imageUrl.isNotEmpty)
-                                            Container(
-                                              width: 20,
-                                              height: 14,
-                                              margin: EdgeInsets.only(right: 8),
-                                              decoration: BoxDecoration(
-                                                image: DecorationImage(
-                                                  image: NetworkImage(
-                                                      language.imageUrl),
-                                                  fit: BoxFit.cover,
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(2),
-                                              ),
-                                            ),
-                                          Text(language.name),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList(),
-                                ],
-                                onChanged: (value) {
-                                  setState(() {
-                                    _selectedLanguageId = value;
-                                    _filterTopics();
-                                  });
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                        SizedBox(width: 10),
-                        Expanded(
                           child: DropdownButtonFormField<String>(
                             decoration: InputDecoration(
                               labelText: 'Cấp độ',
@@ -194,7 +122,10 @@ class _TopicScreenState extends State<TopicScreen> {
                               contentPadding:
                                   EdgeInsets.symmetric(horizontal: 10),
                             ),
-                            value: _selectedLevel.toString(),
+                            // Thay đổi giá trị này
+                            value: _selectedLevel == 0
+                                ? null
+                                : _selectedLevel.toString(),
                             items: [
                               DropdownMenuItem<String>(
                                 value: null,
@@ -206,14 +137,17 @@ class _TopicScreenState extends State<TopicScreen> {
                               ),
                               ..._levels.map((level) {
                                 return DropdownMenuItem<String>(
-                                  value: level,
-                                  child: Text(_levelNames[level] ?? level),
+                                  value: level.toString(),
+                                  child: Text(
+                                      _levelNames[level] ?? level.toString()),
                                 );
                               }).toList(),
                             ],
                             onChanged: (value) {
                               setState(() {
-                                _selectedLevel = int.parse(value!);
+                                // Chuyển đổi giá trị sang int
+                                _selectedLevel =
+                                    value != null ? int.parse(value) : 0;
                                 _filterTopics();
                               });
                             },
@@ -222,14 +156,6 @@ class _TopicScreenState extends State<TopicScreen> {
                       ],
                     ),
                     SizedBox(height: 10),
-                    TextButton.icon(
-                      onPressed: _resetFilter,
-                      icon: Icon(Icons.refresh),
-                      label: Text('Đặt lại bộ lọc'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.blue,
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -237,7 +163,7 @@ class _TopicScreenState extends State<TopicScreen> {
 
             // Danh sách chủ đề
             Positioned(
-              top: 200 * pix,
+              top: 190 * pix,
               left: 0,
               right: 0,
               bottom: 0,
@@ -268,15 +194,13 @@ class _TopicScreenState extends State<TopicScreen> {
                           ),
                           SizedBox(height: 8),
                           Text(
-                            _selectedLanguageId != null ||
-                                    _selectedLevel != null
+                            _selectedLevel != 0
                                 ? 'Không tìm thấy kết quả phù hợp với bộ lọc'
                                 : 'Hãy thêm chủ đề mới!',
                             style: TextStyle(color: Colors.grey[600]),
                           ),
                           SizedBox(height: 16),
-                          if (_selectedLanguageId != null ||
-                              _selectedLevel != null)
+                          if (_selectedLevel != 0)
                             ElevatedButton(
                               onPressed: _resetFilter,
                               child: Text('Đặt lại bộ lọc'),
@@ -342,11 +266,11 @@ class _TopicScreenState extends State<TopicScreen> {
                         padding:
                             EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: _getLevelColor(topic.level),
+                          color: _getLevelColor(int.tryParse(topic.level) ?? 0),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          _levelNames[topic.level] ?? topic.level,
+                          topic.translevel(),
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 12,
@@ -384,52 +308,6 @@ class _TopicScreenState extends State<TopicScreen> {
                     ),
                   ),
                   SizedBox(height: 8),
-                  Consumer<LanguageProvider>(
-                    builder: (context, languageProvider, child) {
-                      // Tìm tên ngôn ngữ dựa vào languageId
-                      final language = languageProvider.languages.firstWhere(
-                        (lang) => lang.id == "",
-                        orElse: () => LanguageModel(
-                          id: '',
-                          name: 'Không xác định',
-                          code: '',
-                          imageUrl: '',
-                          description: '',
-                          createdAt: '',
-                          updatedAt: '',
-                        ),
-                      );
-
-                      return Row(
-                        children: [
-                          if (language.imageUrl.isNotEmpty)
-                            Container(
-                              width: 16,
-                              height: 12,
-                              margin: EdgeInsets.only(right: 6),
-                              decoration: BoxDecoration(
-                                image: DecorationImage(
-                                  image: NetworkImage(language.imageUrl),
-                                  fit: BoxFit.cover,
-                                ),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                          Expanded(
-                            child: Text(
-                              language.name,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[800],
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
                 ],
               ),
             ),
@@ -468,7 +346,6 @@ class _TopicScreenState extends State<TopicScreen> {
                     ).then((_) {
                       Provider.of<TopicProvider>(context, listen: false)
                           .fetchTopics(
-                        languageId: _selectedLanguageId,
                         level: _selectedLevel,
                       );
                     });
@@ -531,16 +408,14 @@ class _TopicScreenState extends State<TopicScreen> {
     );
   }
 
-  Color _getLevelColor(String level) {
+  Color _getLevelColor(int level) {
     switch (level) {
-      case 'beginner':
+      case 1:
         return Colors.green;
-      case 'intermediate':
+      case 2:
         return Colors.blue;
-      case 'advanced':
+      case 3:
         return Colors.orange;
-      case 'expert':
-        return Colors.red;
       default:
         return Colors.grey;
     }

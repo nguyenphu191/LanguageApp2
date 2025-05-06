@@ -29,8 +29,10 @@ class VocabularyProvider with ChangeNotifier {
       if (difficulty != null) queryParams['difficulty'] = difficulty;
 
       // Xây dựng URL với query parameters
-      final uri = Uri.parse(baseUrl).replace(
+      final uri = Uri.parse("${baseUrl}vocabs").replace(
           queryParameters: queryParams.isNotEmpty ? queryParams : null);
+
+      print("Fetching vocabularies from: $uri");
 
       final response = await http.get(
         uri,
@@ -42,17 +44,26 @@ class VocabularyProvider with ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        _vocabularies = (data['data'] as List)
-            .map((item) => VocabularyModel.fromJson(item))
-            .toList();
+        if (data['data'] is List) {
+          _vocabularies = (data['data'] as List)
+              .map((item) => VocabularyModel.fromJson(item))
+              .toList();
+          print("Loaded ${_vocabularies.length} vocabularies");
+        } else {
+          print("Invalid response format: ${response.body}");
+          _vocabularies = [];
+        }
         _isLoading = false;
         notifyListeners();
       } else {
-        throw Exception('Failed to load vocabularies: ${response.statusCode}');
+        throw Exception(
+            'Failed to load vocabularies: ${response.statusCode}, ${response.body}');
       }
     } catch (e) {
+      print("Error fetching vocabularies: $e");
       _isLoading = false;
       notifyListeners();
+      rethrow;
     }
   }
 

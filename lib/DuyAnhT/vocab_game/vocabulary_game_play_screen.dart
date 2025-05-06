@@ -1,143 +1,316 @@
-import 'package:flutter/material.dart';
-import 'package:language_app/widget/top_bar.dart';
 import 'dart:async';
-import 'vocabulary_summary_screen.dart';
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:language_app/provider/vocabulary_game_provider.dart';
+import 'package:language_app/widget/top_bar.dart';
+import 'package:provider/provider.dart';
+import 'package:language_app/DuyAnhT/vocab_game/vocabulary_scramble_game_screen.dart';
+import 'package:language_app/DuyAnhT/vocab_game/vocabulary_transition_screen.dart';
 
 class VocabularyGamePlayScreen extends StatefulWidget {
-  final String topic;
-  const VocabularyGamePlayScreen({super.key, required this.topic});
+  final String topicId;
+  final String topicName;
+
+  const VocabularyGamePlayScreen({
+    super.key,
+    required this.topicId,
+    required this.topicName,
+  });
 
   @override
   State<VocabularyGamePlayScreen> createState() =>
       _VocabularyGamePlayScreenState();
 }
 
-class _VocabularyGamePlayScreenState extends State<VocabularyGamePlayScreen> {
-  int currentGame = 1;
-  int totalScore = 0;
-  int gameTime = 0;
+class _VocabularyGamePlayScreenState extends State<VocabularyGamePlayScreen>
+    with SingleTickerProviderStateMixin {
+  bool _isLoading = true;
+  bool _hasError = false;
+  String _errorMessage = "";
+
+  // Game cards for matrix layout
+  List<GameCard> _allCards = [];
+  GameCard? _selectedCard;
+  bool _canSelect = true;
+
+  // Game state
+  int _score = 0;
+  bool _gameCompleted = false;
+  Timer? _timer;
+  int _timeLeft = 120; // 2 minutes in seconds
+  bool _isPaused = false;
+
+  // Animation controller for wrong matches
+  late AnimationController _animationController;
+  List<String> _animatingCardIds = [];
 
   @override
   void initState() {
     super.initState();
-    _startGameTimer();
-  }
 
-  void _startGameTimer() {
-    Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) setState(() => gameTime++);
+    _animationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 300),
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          _animationController.reverse();
+        } else if (status == AnimationStatus.dismissed &&
+            _animatingCardIds.isNotEmpty) {
+          setState(() {
+            _animatingCardIds = [];
+            _canSelect = true;
+          });
+        }
+      });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadGameData();
     });
   }
 
-  void _nextGame(int score) {
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      if (_isPaused) return;
+
+      setState(() {
+        if (_timeLeft > 0) {
+          _timeLeft--;
+        } else {
+          _endGame();
+        }
+      });
+    });
+  }
+
+  void _pauseGame() {
     setState(() {
-      totalScore += score;
-      currentGame++;
+      _isPaused = true;
     });
   }
 
-  void _showCongratsDialog(int gameNumber, int score) {
-    final pix = (MediaQuery.of(context).size.width / 375).clamp(0.8, 1.2);
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16 * pix)),
-        backgroundColor: Theme.of(context).brightness == Brightness.dark
-            ? const Color(0xFF1E1E2F)
-            : Colors.white,
-        child: Padding(
-          padding: EdgeInsets.all(20 * pix),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.celebration,
-                  size: 60 * pix, color: const Color(0xFFFFD700)),
-              SizedBox(height: 16 * pix),
-              Text(
-                'Chúc mừng bạn hoàn thành Game $gameNumber!',
-                style: TextStyle(
-                  fontSize: 20 * pix,
-                  fontFamily: 'BeVietnamPro',
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : const Color(0xFF1C2526),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 8 * pix),
-              Text(
-                'Điểm: $score',
-                style: TextStyle(
-                  fontSize: 18 * pix,
-                  fontFamily: 'BeVietnamPro',
-                  color: const Color(0xFF10B981),
-                ),
-              ),
-              SizedBox(height: 24 * pix),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _nextGame(score);
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: 24 * pix, vertical: 12 * pix),
-                  backgroundColor: const Color(0xFF10B981),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12 * pix)),
-                  elevation: 0,
-                ),
-                child: Text(
-                  gameNumber < 3
-                      ? 'Bắt đầu Game ${gameNumber + 1}'
-                      : 'Xem Tổng Kết',
-                  style: TextStyle(
-                    fontSize: 16 * pix,
-                    fontFamily: 'BeVietnamPro',
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
+  void _resumeGame() {
+    setState(() {
+      _isPaused = false;
+    });
+  }
+
+  void _endGame() {
+    _timer?.cancel();
+    setState(() {
+      _gameCompleted = true;
+    });
+
+    // Navigate to transition screen instead of summary screen
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => VocabularyTransitionScreen(
+          topicId: widget.topicId,
+          topicName: widget.topicName,
+          nextGameType: NextGameType.scramble,
         ),
       ),
     );
   }
 
+  Future<void> _loadGameData() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = "";
+    });
+
+    final gameProvider =
+        Provider.of<VocabularyGameProvider>(context, listen: false);
+
+    try {
+      // Fetch word link game data
+      await gameProvider.fetchWordLinkGame(widget.topicId);
+
+      if (gameProvider.errorMessage != null) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = gameProvider.errorMessage!;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final wordPairs = gameProvider.wordPairs;
+
+      if (wordPairs.isEmpty) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = "Không có từ vựng cho trò chơi này.";
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Setup the game with the fetched word pairs
+      _setupWordLinkGame(wordPairs);
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      _startTimer();
+    } catch (e) {
+      print('Error loading game data: $e');
+      setState(() {
+        _hasError = true;
+        _errorMessage = "Không thể tải dữ liệu trò chơi. Vui lòng thử lại sau.";
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _setupWordLinkGame(List<WordPair> wordPairs) {
+    _allCards = [];
+
+    // Limit to 8 word pairs for better gameplay
+    final gameWordPairs =
+        wordPairs.length > 8 ? wordPairs.sublist(0, 8) : wordPairs;
+
+    // Create cards for words and translations
+    for (var i = 0; i < gameWordPairs.length; i++) {
+      _allCards.add(
+        GameCard(
+          id: i.toString(),
+          content: gameWordPairs[i].word,
+          isMatched: false,
+          isWord: true,
+        ),
+      );
+
+      _allCards.add(
+        GameCard(
+          id: i.toString(),
+          content: gameWordPairs[i].translation,
+          isMatched: false,
+          isWord: false,
+        ),
+      );
+    }
+
+    // Shuffle all cards
+    _allCards.shuffle();
+  }
+
+  void _onCardTap(GameCard card) {
+    if (!_canSelect || card.isMatched || _animatingCardIds.contains(card.id))
+      return;
+
+    setState(() {
+      if (_selectedCard == null) {
+        // First card selection
+        _selectedCard = card;
+      } else {
+        // Second card selection - check for match
+        _checkMatch(card);
+      }
+    });
+  }
+
+  void _checkMatch(GameCard secondCard) {
+    // Can't match the same card
+    if (_selectedCard!.content == secondCard.content &&
+        _selectedCard!.isWord == secondCard.isWord) {
+      return;
+    }
+
+    _canSelect = false;
+
+    final isMatched = _selectedCard!.id == secondCard.id &&
+        _selectedCard!.isWord != secondCard.isWord;
+
+    if (isMatched) {
+      // If matched, mark both cards as matched
+      setState(() {
+        // Find all cards with the matching ID
+        for (var card in _allCards) {
+          if (card.id == _selectedCard!.id) {
+            card.isMatched = true;
+          }
+        }
+        _selectedCard = null;
+        _score++;
+        _canSelect = true;
+      });
+
+      // Check if game is completed
+      if (_allCards.every((card) => card.isMatched)) {
+        _endGame();
+      }
+    } else {
+      // If not matched, animate wrong match
+      // Store the exact cards that didn't match
+      final firstCardIndex = _allCards.indexWhere((card) =>
+          card.content == _selectedCard!.content &&
+          card.isWord == _selectedCard!.isWord);
+      final secondCardIndex = _allCards.indexOf(secondCard);
+
+      setState(() {
+        _animatingCardIds = [
+          firstCardIndex.toString(),
+          secondCardIndex.toString()
+        ];
+      });
+
+      _animationController.forward();
+
+      // Clear selected card after animation
+      Future.delayed(Duration(milliseconds: 600), () {
+        if (mounted) {
+          setState(() {
+            _selectedCard = null;
+          });
+        }
+      });
+    }
+  }
+
+  void _resetGame() {
+    _timer?.cancel();
+
+    final gameProvider =
+        Provider.of<VocabularyGameProvider>(context, listen: false);
+
+    setState(() {
+      _score = 0;
+      _gameCompleted = false;
+      _selectedCard = null;
+      _canSelect = true;
+      _timeLeft = 120;
+      _isPaused = false;
+      _animatingCardIds = [];
+
+      // Re-setup game with the same word pairs
+      if (gameProvider.wordPairs.isNotEmpty) {
+        _setupWordLinkGame(gameProvider.wordPairs);
+      }
+    });
+
+    _startTimer();
+  }
+
+  String _formatTime(int seconds) {
+    int minutes = seconds ~/ 60;
+    int remainingSeconds = seconds % 60;
+    return '$minutes:${remainingSeconds.toString().padLeft(2, '0')}';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final pix = MediaQuery.of(context).size.width / 375;
+    final size = MediaQuery.of(context).size;
+    final pix = (size.width / 375).clamp(0.8, 1.2);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    Widget currentGameWidget;
-    switch (currentGame) {
-      case 1:
-        currentGameWidget =
-            Game1(onComplete: (score) => _showCongratsDialog(1, score));
-        break;
-      case 2:
-        currentGameWidget =
-            Game2(onComplete: (score) => _showCongratsDialog(2, score));
-        break;
-      case 3:
-        currentGameWidget = Game3(onComplete: (score) {
-          totalScore += score;
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  VocabularySummaryScreen(score: totalScore, time: gameTime),
-            ),
-          );
-        });
-        break;
-      default:
-        currentGameWidget = const SizedBox();
-    }
 
     return Scaffold(
       body: Container(
@@ -152,495 +325,327 @@ class _VocabularyGamePlayScreenState extends State<VocabularyGamePlayScreen> {
         child: Stack(
           children: [
             Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: TopBar(title: 'Luyện Tập - ${widget.topic}')),
-            Positioned(
-              top: 110 * pix,
-              left: 16 * pix,
-              right: 16 * pix,
-              bottom: 16 * pix,
-              child: Column(
-                children: [
-                  // Progress bar
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: 24 * pix, vertical: 8 * pix),
-                    child: LinearProgressIndicator(
-                      value: currentGame / 3,
-                      backgroundColor: isDarkMode
-                          ? Colors.grey[700]
-                          : const Color(0xFFE5E7EB),
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                          Color(0xFF10B981)),
-                      minHeight: 4 * pix,
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.only(right: 16 * pix),
-                    child: Row(
-                      children: [
-                        Icon(Icons.timer,
-                            size: 20 * pix, color: const Color(0xFFD97706)),
-                        SizedBox(width: 4 * pix),
-                        Text(
-                          '${gameTime ~/ 60}:${(gameTime % 60).toString().padLeft(2, '0')}',
-                          style: TextStyle(
-                            fontSize: 16 * pix,
-                            fontFamily: 'BeVietnamPro',
-                            color: const Color(0xFFD97706),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(child: currentGameWidget),
-                ],
+              top: 0,
+              right: 0,
+              left: 0,
+              child: TopBar(
+                title: 'Nối từ: ${widget.topicName}',
+                isBack: true,
               ),
+            ),
+            Positioned(
+              top: 100 * pix,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _buildBody(context, pix, isDarkMode),
             ),
           ],
         ),
       ),
     );
   }
-}
 
-// Game 1: Nối từ - Đã sửa để ô to hơn
-class Game1 extends StatefulWidget {
-  final Function(int) onComplete;
-  const Game1({super.key, required this.onComplete});
-
-  @override
-  State<Game1> createState() => _Game1State();
-}
-
-class _Game1State extends State<Game1> {
-  List<Map<String, dynamic>> words = [
-    {'en': 'Dog', 'vi': 'Chó', 'visible': true},
-    {'en': 'Cat', 'vi': 'Mèo', 'visible': true},
-    {'en': 'Bird', 'vi': 'Chim', 'visible': true},
-    {'en': 'Fish', 'vi': 'Cá', 'visible': true},
-    {'en': 'Horse', 'vi': 'Ngựa', 'visible': true},
-  ];
-  List<int?> selected = [null, null];
-  int score = 0;
-  bool isWrong = false;
-
-  void _checkPair() {
-    if (selected[0] != null && selected[1] != null) {
-      final enIdx = selected[0]! ~/ 2;
-      final viIdx = selected[1]! ~/ 2;
-      if (words[enIdx]['en'] == 'Dog' && words[viIdx]['vi'] == 'Chó' ||
-          words[enIdx]['en'] == 'Cat' && words[viIdx]['vi'] == 'Mèo' ||
-          words[enIdx]['en'] == 'Bird' && words[viIdx]['vi'] == 'Chim' ||
-          words[enIdx]['en'] == 'Fish' && words[viIdx]['vi'] == 'Cá' ||
-          words[enIdx]['en'] == 'Horse' && words[viIdx]['vi'] == 'Ngựa') {
-        setState(() {
-          words[enIdx]['visible'] = false;
-          words[viIdx]['visible'] = false;
-          score += 20;
-          selected = [null, null];
-          isWrong = false;
-        });
-        if (words.every((w) => !w['visible'])) widget.onComplete(score);
-      } else {
-        setState(() => isWrong = true);
-        Future.delayed(const Duration(seconds: 1), () {
-          if (mounted)
-            setState(() {
-              selected = [null, null];
-              isWrong = false;
-            });
-        });
-      }
+  Widget _buildBody(BuildContext context, double pix, bool isDarkMode) {
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator());
     }
+
+    if (_hasError) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              color: Colors.red,
+              size: 50 * pix,
+            ),
+            SizedBox(height: 16 * pix),
+            Text(
+              _errorMessage,
+              style: TextStyle(
+                fontSize: 16 * pix,
+                color: Colors.red,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 16 * pix),
+            ElevatedButton(
+              onPressed: _loadGameData,
+              child: Text('Thử lại'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xff165598),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_isPaused) {
+      return _buildPausedView(pix, isDarkMode);
+    }
+
+    return Column(
+      children: [
+        _buildGameHeader(pix, isDarkMode),
+        Expanded(
+          child: _buildGameMatrix(pix, isDarkMode),
+        ),
+      ],
+    );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final pix = (MediaQuery.of(context).size.width / 375).clamp(0.8, 1.2);
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildGameHeader(double pix, bool isDarkMode) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 24 * pix, vertical: 16 * pix),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.timer,
+                    size: 24 * pix,
+                    color: _timeLeft < 30 ? Colors.red : Colors.blue,
+                  ),
+                  SizedBox(width: 8 * pix),
+                  Text(
+                    _formatTime(_timeLeft),
+                    style: TextStyle(
+                      fontSize: 18 * pix,
+                      fontWeight: FontWeight.bold,
+                      color: _timeLeft < 30 ? Colors.red : Colors.blue,
+                    ),
+                  ),
+                ],
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.pause_circle_filled,
+                  size: 28 * pix,
+                  color: Colors.blue,
+                ),
+                onPressed: _pauseGame,
+              ),
+            ],
+          ),
+          SizedBox(height: 16 * pix),
+          Text(
+            'Chọn các ô từ vựng và nghĩa tiếng Việt tương ứng',
+            style: TextStyle(
+              fontSize: 16 * pix,
+              fontWeight: FontWeight.w500,
+              color: isDarkMode ? Colors.white70 : Colors.black87,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGameMatrix(double pix, bool isDarkMode) {
+    // Calculate grid dimensions based on number of cards
+    final int crossAxisCount = _getCrossAxisCount(_allCards.length);
 
     return Padding(
       padding: EdgeInsets.all(16 * pix),
-      child: Column(
-        children: [
-          Text(
-            'Game 1: Nối Từ',
-            style: TextStyle(
-              fontSize: 20 * pix,
-              fontFamily: 'BeVietnamPro',
-              fontWeight: FontWeight.w600,
-              color: isDarkMode ? Colors.white : const Color(0xFF1C2526),
-            ),
-          ),
-          SizedBox(height: 16 * pix),
-          Expanded(
-            child: GridView.builder(
-              padding: EdgeInsets.all(16 * pix),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2, // Giảm số cột để ô to hơn
-                crossAxisSpacing: 16 * pix,
-                mainAxisSpacing: 16 * pix,
-                childAspectRatio: 1.5, // Tăng tỷ lệ kích thước ô
-              ),
-              itemCount: words.length * 2,
-              itemBuilder: (context, index) {
-                final wordIndex = index ~/ 2;
-                final isEnglish = index % 2 == 0;
-                final word = words[wordIndex];
+      child: GridView.builder(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          childAspectRatio: 1.0,
+          crossAxisSpacing: 8 * pix,
+          mainAxisSpacing: 8 * pix,
+        ),
+        itemCount: _allCards.length,
+        itemBuilder: (context, index) {
+          final card = _allCards[index];
+          final bool isSelected = _selectedCard != null &&
+              _selectedCard!.content == card.content &&
+              _selectedCard!.isWord == card.isWord;
+          // Check if this specific card position is being animated as an incorrect match
+          final bool isAnimating = _animatingCardIds.contains(index.toString());
 
-                if (!word['visible']) return const SizedBox.shrink();
-
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      if (selected[0] == null) {
-                        selected[0] = index;
-                      } else if (selected[1] == null && selected[0] != index) {
-                        selected[1] = index;
-                        _checkPair();
-                      }
-                    });
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: selected.contains(index)
-                          ? const Color(0xFF3B82F6).withOpacity(0.3)
-                          : isDarkMode
-                              ? Colors.grey[800]
-                              : const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(12 * pix),
-                      border: Border.all(
-                        color: isWrong && selected.contains(index)
-                            ? Colors.red
-                            : Colors.transparent,
-                        width: 2 * pix,
-                      ),
+          return GestureDetector(
+            onTap: () => _onCardTap(card),
+            child: AnimatedBuilder(
+              animation: _animationController,
+              builder: (context, child) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: _getCardColor(
+                        card, isSelected, isAnimating, isDarkMode),
+                    borderRadius: BorderRadius.circular(8 * pix),
+                    border: Border.all(
+                      color: _getCardBorderColor(card, isSelected, isAnimating),
+                      width: 2 * pix,
                     ),
-                    child: Center(
-                      child: Text(
-                        isEnglish ? word['en'] : word['vi'],
-                        style: TextStyle(
-                          fontSize: 24 * pix, // Tăng kích thước chữ
-                          fontFamily: 'BeVietnamPro',
-                          fontWeight: FontWeight.w600,
-                          color: isDarkMode
-                              ? Colors.white
-                              : const Color(0xFF1C2526),
+                    boxShadow: [
+                      if (!card.isMatched)
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
                         ),
-                      ),
-                    ),
+                    ],
                   ),
+                  child: card.isMatched
+                      ? Container() // Empty container for matched cards
+                      : Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(8 * pix),
+                            child: Text(
+                              card.content,
+                              style: TextStyle(
+                                fontSize: 14 * pix,
+                                fontWeight: card.isWord
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: _getCardTextColor(
+                                    card, isSelected, isAnimating, isDarkMode),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
                 );
               },
             ),
-          ),
-          if (isWrong)
-            Padding(
-              padding: EdgeInsets.only(top: 16 * pix),
-              child: Text(
-                'Sai rồi, thử lại nhé!',
-                style: TextStyle(
-                  fontSize: 16 * pix,
-                  fontFamily: 'BeVietnamPro',
-                  color: Colors.red,
-                ),
-              ),
-            ),
-        ],
+          );
+        },
       ),
     );
   }
-}
 
-// Game 2: Trộn từ - Đã sửa để clear input khi tiếp tục
-class Game2 extends StatefulWidget {
-  final Function(int) onComplete;
-  const Game2({super.key, required this.onComplete});
-
-  @override
-  State<Game2> createState() => _Game2State();
-}
-
-class _Game2State extends State<Game2> {
-  final List<String> words = ['Apple', 'Banana', 'Orange', 'Grape'];
-  int currentWordIndex = 0;
-  String scrambled = '';
-  final TextEditingController _controller = TextEditingController();
-  int score = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _scrambleWord();
+  int _getCrossAxisCount(int totalCards) {
+    if (totalCards <= 4) return 2;
+    if (totalCards <= 9) return 3;
+    if (totalCards <= 16) return 4;
+    return 4; // Default to 4 for larger numbers
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _scrambleWord() {
-    final word = words[currentWordIndex];
-    scrambled = (word.split('')..shuffle()).join();
-    _controller.clear(); // Clear input khi chuẩn bị từ mới
-  }
-
-  void _checkWord() {
-    if (_controller.text.trim().toLowerCase() ==
-        words[currentWordIndex].toLowerCase()) {
-      setState(() {
-        score += 25;
-        currentWordIndex++;
-        if (currentWordIndex < words.length) {
-          _scrambleWord();
-        } else {
-          widget.onComplete(score);
-        }
-      });
+  Color _getCardColor(
+      GameCard card, bool isSelected, bool isAnimating, bool isDarkMode) {
+    if (card.isMatched) {
+      return Colors.transparent;
     }
+
+    if (isAnimating) {
+      return Colors.red.withOpacity(_animationController.value * 0.5);
+    }
+
+    if (isSelected) {
+      return isDarkMode
+          ? Colors.blue.withOpacity(0.3)
+          : Colors.blue.withOpacity(0.1);
+    }
+
+    return isDarkMode ? Color(0xFF2A2A42) : Colors.white;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final pix = (MediaQuery.of(context).size.width / 375).clamp(0.8, 1.2);
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+  Color _getCardBorderColor(GameCard card, bool isSelected, bool isAnimating) {
+    if (card.isMatched) {
+      return Colors.transparent;
+    }
 
-    return Padding(
-      padding: EdgeInsets.all(24 * pix),
+    if (isAnimating) {
+      return Colors.red;
+    }
+
+    if (isSelected) {
+      return Colors.blue;
+    }
+
+    return Colors.grey.withOpacity(0.3);
+  }
+
+  Color _getCardTextColor(
+      GameCard card, bool isSelected, bool isAnimating, bool isDarkMode) {
+    if (card.isMatched) {
+      return Colors.transparent;
+    }
+
+    if (isAnimating) {
+      return Colors.white;
+    }
+
+    if (isSelected) {
+      return Colors.blue;
+    }
+
+    return isDarkMode ? Colors.white : Colors.black87;
+  }
+
+  Widget _buildPausedView(double pix, bool isDarkMode) {
+    return Center(
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            'Game 2: Trộn Từ',
-            style: TextStyle(
-              fontSize: 20 * pix,
-              fontFamily: 'BeVietnamPro',
-              fontWeight: FontWeight.w600,
-              color: isDarkMode ? Colors.white : const Color(0xFF1C2526),
-            ),
+          Icon(
+            Icons.pause_circle_filled,
+            size: 80 * pix,
+            color: Colors.blue,
           ),
           SizedBox(height: 24 * pix),
-          if (currentWordIndex < words.length) ...[
-            Card(
-              color: isDarkMode ? const Color(0xFF1E1E2F) : Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12 * pix),
-                side: BorderSide(
-                    color: isDarkMode
-                        ? Colors.grey[800]!
-                        : const Color(0xFFE5E7EB)),
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(16 * pix),
-                child: Column(
-                  children: [
-                    Text(
-                      'Sắp xếp lại: $scrambled',
-                      style: TextStyle(
-                        fontSize: 18 * pix,
-                        fontFamily: 'BeVietnamPro',
-                        color:
-                            isDarkMode ? Colors.white : const Color(0xFF1C2526),
-                      ),
-                    ),
-                    SizedBox(height: 16 * pix),
-                    TextField(
-                      controller: _controller,
-                      style: TextStyle(
-                        color:
-                            isDarkMode ? Colors.white : const Color(0xFF1C2526),
-                      ),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: isDarkMode
-                            ? Colors.grey[800]
-                            : const Color(0xFFF1F5F9),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12 * pix),
-                          borderSide: BorderSide.none,
-                        ),
-                        hintText: 'Nhập từ',
-                        hintStyle: TextStyle(
-                            color: isDarkMode
-                                ? Colors.grey[400]
-                                : Colors.grey[600]),
-                      ),
-                    ),
-                    SizedBox(height: 16 * pix),
-                    ElevatedButton(
-                      onPressed: _checkWord,
-                      style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 24 * pix, vertical: 12 * pix),
-                        backgroundColor: const Color(0xFF10B981),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12 * pix)),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        'Kiểm Tra',
-                        style: TextStyle(
-                          fontSize: 16 * pix,
-                          fontFamily: 'BeVietnamPro',
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+          Text(
+            'Trò Chơi Tạm Dừng',
+            style: TextStyle(
+              fontSize: 24 * pix,
+              fontWeight: FontWeight.bold,
+              color: isDarkMode ? Colors.white : Colors.black87,
             ),
-          ],
+          ),
+          SizedBox(height: 16 * pix),
+          Text(
+            'Thời gian còn lại: ${_formatTime(_timeLeft)}',
+            style: TextStyle(
+              fontSize: 18 * pix,
+              color: isDarkMode ? Colors.white70 : Colors.black54,
+            ),
+          ),
+          SizedBox(height: 32 * pix),
+          ElevatedButton.icon(
+            icon: Icon(Icons.play_arrow),
+            label: Text('Tiếp Tục Chơi'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              padding: EdgeInsets.symmetric(
+                  horizontal: 24 * pix, vertical: 12 * pix),
+              textStyle: TextStyle(fontSize: 16 * pix),
+            ),
+            onPressed: _resumeGame,
+          ),
+          SizedBox(height: 16 * pix),
+          TextButton.icon(
+            icon: Icon(Icons.restart_alt),
+            label: Text('Chơi Lại'),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.symmetric(
+                  horizontal: 24 * pix, vertical: 12 * pix),
+              textStyle: TextStyle(fontSize: 16 * pix),
+            ),
+            onPressed: _resetGame,
+          ),
         ],
       ),
     );
   }
 }
 
-// Game 3: Thử thách nghe - Đã sửa để clear input khi tiếp tục
-class Game3 extends StatefulWidget {
-  final Function(int) onComplete;
-  const Game3({super.key, required this.onComplete});
+class GameCard {
+  final String id;
+  final String content;
+  bool isMatched;
+  final bool isWord;
 
-  @override
-  State<Game3> createState() => _Game3State();
-}
-
-class _Game3State extends State<Game3> {
-  final List<String> words = ['Hello', 'World', 'Flutter', 'Dart'];
-  int currentWordIndex = 0;
-  final TextEditingController _controller = TextEditingController();
-  bool isChecked = false;
-  bool isCorrect = false;
-  int score = 0;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _playAudio() {
-    print('Playing: ${words[currentWordIndex]}');
-  }
-
-  void _checkAnswer() {
-    setState(() {
-      isChecked = true;
-      isCorrect = _controller.text.trim().toLowerCase() ==
-          words[currentWordIndex].toLowerCase();
-      if (isCorrect) score += 30;
-    });
-  }
-
-  void _nextWord() {
-    setState(() {
-      currentWordIndex++;
-      isChecked = false;
-      _controller.clear(); // Clear input khi chuyển từ
-      if (currentWordIndex >= words.length) widget.onComplete(score);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final pix = (MediaQuery.of(context).size.width / 375).clamp(0.8, 1.2);
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    return Padding(
-      padding: EdgeInsets.all(24 * pix),
-      child: Column(
-        children: [
-          Text(
-            'Game 3: Thử Thách Nghe',
-            style: TextStyle(
-              fontSize: 20 * pix,
-              fontFamily: 'BeVietnamPro',
-              fontWeight: FontWeight.w600,
-              color: isDarkMode ? Colors.white : const Color(0xFF1C2526),
-            ),
-          ),
-          SizedBox(height: 24 * pix),
-          if (currentWordIndex < words.length) ...[
-            Card(
-              color: isDarkMode ? const Color(0xFF1E1E2F) : Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12 * pix),
-                side: BorderSide(
-                    color: isDarkMode
-                        ? Colors.grey[800]!
-                        : const Color(0xFFE5E7EB)),
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(16 * pix),
-                child: Column(
-                  children: [
-                    IconButton(
-                      onPressed: _playAudio,
-                      icon: Icon(Icons.volume_up,
-                          size: 40 * pix, color: const Color(0xFF3B82F6)),
-                    ),
-                    SizedBox(height: 16 * pix),
-                    TextField(
-                      controller: _controller,
-                      enabled: !isChecked || !isCorrect,
-                      style: TextStyle(
-                        color:
-                            isDarkMode ? Colors.white : const Color(0xFF1C2526),
-                      ),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: isDarkMode
-                            ? Colors.grey[800]
-                            : const Color(0xFFF1F5F9),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12 * pix),
-                          borderSide: BorderSide.none,
-                        ),
-                        hintText: 'Điền từ bạn nghe được',
-                        hintStyle: TextStyle(
-                            color: isDarkMode
-                                ? Colors.grey[400]
-                                : Colors.grey[600]),
-                      ),
-                    ),
-                    SizedBox(height: 16 * pix),
-                    ElevatedButton(
-                      onPressed:
-                          isChecked && isCorrect ? _nextWord : _checkAnswer,
-                      style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 24 * pix, vertical: 12 * pix),
-                        backgroundColor: isChecked
-                            ? (isCorrect ? const Color(0xFF10B981) : Colors.red)
-                            : const Color(0xFF10B981),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12 * pix)),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        isChecked
-                            ? (isCorrect ? 'Tiếp Tục' : 'Kiểm Tra Lại')
-                            : 'Kiểm Tra',
-                        style: TextStyle(
-                          fontSize: 16 * pix,
-                          fontFamily: 'BeVietnamPro',
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
+  GameCard({
+    required this.id,
+    required this.content,
+    required this.isMatched,
+    required this.isWord,
+  });
 }

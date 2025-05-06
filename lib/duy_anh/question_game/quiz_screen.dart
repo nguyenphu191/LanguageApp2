@@ -358,7 +358,7 @@ class _QuizScreenState extends State<QuizScreen> {
           children: [
             CircularProgressIndicator(),
             SizedBox(height: 16),
-            Text("Submitting your results..."),
+            Text("Đang chấm điểm..."),
           ],
         ),
       ),

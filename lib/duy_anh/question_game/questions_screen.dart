@@ -22,7 +22,6 @@ class QuestionsScreen extends StatefulWidget {
 class _QuestionsScreenState extends State<QuestionsScreen>
     with WidgetsBindingObserver {
   // Add a flag to track if data has been loaded
-  bool _hasLoadedData = false;
   bool _isLoading = true;
 
   @override
@@ -49,7 +48,6 @@ class _QuestionsScreenState extends State<QuestionsScreen>
     examProvider.fetchExamsByType(widget.examType).then((_) {
       if (mounted) {
         setState(() {
-          _hasLoadedData = true;
           _isLoading = false;
         });
       }
@@ -70,9 +68,6 @@ class _QuestionsScreenState extends State<QuestionsScreen>
 
   // Method to handle navigation to quiz screen
   void _navigateToQuiz(ExamModel exam) async {
-    print(
-        "QuestionsScreen: Navigating to ${widget.examType} exam with ID: ${exam.id}");
-
     // Navigate to QuizScreen without expecting a result
     final result = await Navigator.push(
       context,
@@ -86,7 +81,6 @@ class _QuestionsScreenState extends State<QuestionsScreen>
 
     // Only refresh if the quiz was completed - we'll pass result from summary screen
     if (mounted && result == true) {
-      print("QuestionsScreen: Exam completed, refreshing data");
       final examProvider = Provider.of<ExamProvider>(context, listen: false);
 
       // Show a loading indicator during refresh
@@ -96,9 +90,7 @@ class _QuestionsScreenState extends State<QuestionsScreen>
 
       try {
         await examProvider.refreshExams(widget.examType);
-        print("QuestionsScreen: Data refresh completed");
       } catch (e) {
-        print("QuestionsScreen: Error refreshing data: $e");
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Không thể cập nhật danh sách bài kiểm tra'),

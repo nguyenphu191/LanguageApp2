@@ -29,8 +29,8 @@ class ExamTypeStats {
 
   factory ExamTypeStats.fromJson(Map<String, dynamic> json) {
     return ExamTypeStats(
-      total: json['total'],
-      completed: json['completed'],
+      total: json['total'] ?? 0,
+      completed: json['completed'] ?? 0,
     );
   }
 }

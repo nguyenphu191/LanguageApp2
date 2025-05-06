@@ -42,11 +42,8 @@ class _VocabularySummaryScreenState extends State<VocabularySummaryScreen> {
     _navigationTimer = Timer(const Duration(seconds: 3), () {
       // Check if the widget is still mounted before navigating
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => VocabularyGameTopicsScreen(),
-          ),
-        );
+        // Simply pop this screen to go back to the original topics screen
+        Navigator.of(context).pop();
       }
     });
   }

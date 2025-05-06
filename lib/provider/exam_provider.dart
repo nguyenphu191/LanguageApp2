@@ -49,20 +49,16 @@ class ExamProvider with ChangeNotifier {
   });
 
   Future<void> fetchExamOverview({bool forceRefresh = false}) async {
-    // Check if we already have data and it's still valid (cache for 5 minutes)
     final now = DateTime.now();
     if (!forceRefresh &&
         examOverviewData != null &&
         _lastOverviewFetch != null &&
         now.difference(_lastOverviewFetch!) < _cacheValidDuration) {
-      print(
-          "fetchExamOverview: Using cached data (${now.difference(_lastOverviewFetch!).inSeconds}s old)");
       return;
     }
 
     // Prevent duplicate calls
     if (isLoading) {
-      print("fetchExamOverview: Already loading, skipping duplicate call");
       return;
     }
 

@@ -15,9 +15,9 @@ class CommonResponse<T> {
       Map<String, dynamic> json, T Function(Object? json) fromJsonT) {
     return CommonResponse<T>(
       data: fromJsonT(json['data']),
-      statusCode: json['statusCode'],
-      message: json['message'],
-      success: json['success'],
+      statusCode: json['statusCode'] ?? 200,
+      message: json['message'] ?? '',
+      success: json['success'] ?? true,
     );
   }
 }

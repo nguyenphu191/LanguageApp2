@@ -18,9 +18,6 @@ class ExamProvider with ChangeNotifier {
   bool isLoading = false;
   String? errorMessage;
 
-  // Cache control variables
-  DateTime? _lastOverviewFetch;
-  final Duration _cacheValidDuration = const Duration(minutes: 5);
   bool _isRefreshingAfterSubmission = false;
 
   int currentPage = 1;
@@ -38,6 +35,11 @@ class ExamProvider with ChangeNotifier {
   bool isLoadingExamDetail = false;
   String? examDetailError;
 
+  // Keep track of all questions (single + section)
+  List<Map<String, dynamic>> _allQuestions = [];
+  int get totalQuestions => _allQuestions.length;
+  List<Map<String, dynamic>> get allQuestions => _allQuestions;
+
   ExamDetailModel? get currentExam => _currentExam;
 
   bool isSubmittingResult = false;
@@ -49,15 +51,6 @@ class ExamProvider with ChangeNotifier {
   });
 
   Future<void> fetchExamOverview({bool forceRefresh = false}) async {
-    final now = DateTime.now();
-    if (!forceRefresh &&
-        examOverviewData != null &&
-        _lastOverviewFetch != null &&
-        now.difference(_lastOverviewFetch!) < _cacheValidDuration) {
-      return;
-    }
-
-    // Prevent duplicate calls
     if (isLoading) {
       return;
     }
@@ -88,7 +81,6 @@ class ExamProvider with ChangeNotifier {
           jsonData,
           (data) => ExamOverviewData.fromJson(data as Map<String, dynamic>),
         );
-        _lastOverviewFetch = now;
         print("fetchExamOverview: Successfully fetched and updated data");
       } else {
         throw Exception('Server returned an error: ${response.statusCode}');
@@ -197,6 +189,7 @@ class ExamProvider with ChangeNotifier {
     isLoadingExamDetail = true;
     examDetailError = null;
     _currentExam = null;
+    _allQuestions = []; // Reset the combined questions list
     notifyListeners();
 
     try {
@@ -237,12 +230,16 @@ class ExamProvider with ChangeNotifier {
               jsonData.containsKey('data') ? jsonData['data'] : jsonData;
 
           _currentExam = ExamDetailModel.fromJson(examData);
+          print(_currentExam?.toString());
           print(
               "fetchExamById: Successfully parsed ExamDetailModel with ${_currentExam?.examSingleQuestions.length ?? 0} questions");
 
           if (_currentExam?.examSingleQuestions.isEmpty ?? true) {
             print("fetchExamById: Warning - No questions in exam");
           }
+
+          // Process and combine all questions from both single questions and sections
+          _processAllQuestions();
         } catch (parseError) {
           print("fetchExamById: Error parsing ExamDetailModel: $parseError");
           throw Exception("Failed to parse exam data: $parseError");
@@ -258,6 +255,78 @@ class ExamProvider with ChangeNotifier {
       notifyListeners();
       print(
           "fetchExamById: Finished with ${_currentExam != null ? 'successful' : 'failed'} result");
+      print("fetchExamById: Total combined questions: ${_allQuestions.length}");
+    }
+  }
+
+  // Process and combine all questions from an exam
+  void _processAllQuestions() {
+    if (_currentExam == null) {
+      _allQuestions = [];
+      return;
+    }
+
+    List<Map<String, dynamic>> questions = [];
+
+    // Add single questions first
+    if (_currentExam!.examSingleQuestions.isNotEmpty) {
+      print(
+          "Processing ${_currentExam!.examSingleQuestions.length} single questions");
+      for (var sq in _currentExam!.examSingleQuestions) {
+        questions.add({
+          'type': 'single',
+          'question': sq.question,
+          'sectionTitle': null,
+          'sectionDescription': null,
+          'sectionType': null,
+          'sectionAudioUrl': null,
+        });
+      }
+    }
+
+    // Add section questions
+    if (_currentExam!.examSections.isNotEmpty) {
+      print("Processing ${_currentExam!.examSections.length} sections");
+      for (int sectionIndex = 0;
+          sectionIndex < _currentExam!.examSections.length;
+          sectionIndex++) {
+        final section = _currentExam!.examSections[sectionIndex];
+        print(
+            "Processing section ${sectionIndex + 1}/${_currentExam!.examSections.length}: '${section.title ?? "Untitled"}' with ${section.examSectionItems.length} questions");
+
+        for (int itemIndex = 0;
+            itemIndex < section.examSectionItems.length;
+            itemIndex++) {
+          try {
+            final item = section.examSectionItems[itemIndex];
+
+            questions.add({
+              'type': 'section',
+              'question': item.question,
+              'sectionTitle': section.title,
+              'sectionDescription': section.description,
+              'sectionType': section.type,
+              'sectionAudioUrl': section.audioUrl,
+              'sectionIndex': sectionIndex,
+              'itemIndex': itemIndex,
+            });
+          } catch (e) {
+            print("ERROR processing section item: $e");
+          }
+        }
+      }
+    }
+
+    // Update the combined questions list
+    _allQuestions = questions;
+    print("Total combined questions: ${_allQuestions.length}");
+
+    // Extra safety check to verify the combined list
+    if (_allQuestions.isEmpty &&
+        (_currentExam!.examSingleQuestions.isNotEmpty ||
+            _currentExam!.examSections.isNotEmpty)) {
+      print(
+          "ERROR: Failed to process questions! Questions exist but _allQuestions is empty");
     }
   }
 

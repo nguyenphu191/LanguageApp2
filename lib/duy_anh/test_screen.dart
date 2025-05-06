@@ -32,7 +32,8 @@ class _TestScreenState extends State<TestScreen>
     _controller.forward();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ExamProvider>(context, listen: false).fetchExamOverview();
+      Provider.of<ExamProvider>(context, listen: false)
+          .fetchExamOverview(forceRefresh: true);
     });
   }
 
@@ -69,6 +70,15 @@ class _TestScreenState extends State<TestScreen>
                 child: TopBar(
                   title: 'Kiểm tra',
                   isBack: false,
+                  actions: [
+                    IconButton(
+                      icon: Icon(Icons.refresh, color: Colors.white),
+                      onPressed: () {
+                        Provider.of<ExamProvider>(context, listen: false)
+                            .fetchExamOverview(forceRefresh: true);
+                      },
+                    ),
+                  ],
                 )),
             Positioned(
               top: 100 * pix,
@@ -129,7 +139,7 @@ class _TestScreenState extends State<TestScreen>
                           ),
                           SizedBox(height: 8 * pix),
                           Text(
-                            'Chọn một nhiệm vụ để nâng cao kỹ năng tiếng Anh',
+                            'Nâng cao và củng cố kiến thức',
                             style: TextStyle(
                               fontSize: 14 * pix,
                               fontFamily: 'BeVietnamPro',
@@ -142,9 +152,9 @@ class _TestScreenState extends State<TestScreen>
                           _buildTaskCard(
                             context: context,
                             icon: Icons.quiz,
-                            title: 'Trắc nghiệm hàng tuần',
+                            title: 'Kiểm tra định kì',
                             subtitle:
-                                'Câu hỏi cá nhân hóa để kiểm tra kiến thức',
+                                'Câu hỏi kiểm tra định kì theo tuần hoặc theo tháng',
                             progress: examProvider
                                 .getCompletionPercentage('weeklyExams'),
                             color: const Color(0xFF3B82F6), // Xanh dương
@@ -153,7 +163,7 @@ class _TestScreenState extends State<TestScreen>
                               MaterialPageRoute(
                                 builder: (context) => const QuestionsScreen(
                                   examType: 'weekly',
-                                  title: 'Trắc nghiệm hàng tuần',
+                                  title: 'Kiểm tra định kì',
                                 ),
                               ),
                             ),
@@ -163,8 +173,9 @@ class _TestScreenState extends State<TestScreen>
                           _buildTaskCard(
                             context: context,
                             icon: Icons.extension,
-                            title: 'Luyện Từ Vựng',
-                            subtitle: 'Trò chơi tương tác để nắm vững từ mới',
+                            title: 'Trò chơi từ vựng',
+                            subtitle:
+                                'Luyện tập từ vựng với các trò chơi thú vị',
                             progress: examProvider
                                 .getCompletionPercentage('vocabGames'),
                             color: const Color(0xFF10B981), // Xanh lá
@@ -183,7 +194,7 @@ class _TestScreenState extends State<TestScreen>
                           _buildTaskCard(
                             context: context,
                             icon: Icons.analytics,
-                            title: 'Kiểm tra toàn diện',
+                            title: 'Kiểm tra tổng hợp',
                             subtitle:
                                 'Bài kiểm tra toàn diện để đánh giá trình độ',
                             progress: examProvider
@@ -194,7 +205,7 @@ class _TestScreenState extends State<TestScreen>
                               MaterialPageRoute(
                                 builder: (context) => const QuestionsScreen(
                                   examType: 'comprehensive',
-                                  title: 'Kiểm tra toàn diện',
+                                  title: 'Kiểm tra tổng hợp',
                                 ),
                               ),
                             ),

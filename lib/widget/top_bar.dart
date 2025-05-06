@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 
 class TopBar extends StatefulWidget {
-  const TopBar({super.key, required this.title, this.isBack = true});
+  const TopBar({
+    super.key,
+    required this.title,
+    this.isBack = true,
+    this.actions,
+  });
+
   final String title;
   final bool isBack;
+  final List<Widget>? actions;
 
   @override
   State<TopBar> createState() => _TopBarState();
@@ -46,7 +53,8 @@ class _TopBarState extends State<TopBar> {
           Expanded(
             child: Container(
               height: 80 * pix,
-              padding: EdgeInsets.only(top: 30 * pix, right: 50 * pix),
+              padding: EdgeInsets.only(
+                  top: 30 * pix, right: widget.actions != null ? 0 : 50 * pix),
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
@@ -64,6 +72,14 @@ class _TopBarState extends State<TopBar> {
               ),
             ),
           ),
+          if (widget.actions != null)
+            Container(
+              margin: EdgeInsets.only(top: 16 * pix, right: 8 * pix),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: widget.actions!,
+              ),
+            ),
         ],
       ),
     );

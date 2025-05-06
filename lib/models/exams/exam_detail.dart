@@ -149,29 +149,30 @@ class ExamSection {
 
 class ExamSectionItem {
   final int id;
-  final int sectionId;
-  final String type;
-  final String content;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final int examSectionId;
+  final int questionId;
+  final Question question;
 
   ExamSectionItem({
     required this.id,
-    required this.sectionId,
-    required this.type,
-    required this.content,
-    required this.createdAt,
-    required this.updatedAt,
+    required this.examSectionId,
+    required this.questionId,
+    required this.question,
   });
 
   factory ExamSectionItem.fromJson(Map<String, dynamic> json) {
-    return ExamSectionItem(
-      id: json['id'],
-      sectionId: json['sectionId'],
-      type: json['type'],
-      content: json['content'],
-      createdAt: DateTime.parse(json['createdAt']),
-      updatedAt: DateTime.parse(json['updatedAt']),
-    );
+    print("ExamSectionItem.fromJson: ${json.keys.toList()}");
+    try {
+      return ExamSectionItem(
+        id: json['id'],
+        examSectionId: json['examSectionId'],
+        questionId: json['questionId'],
+        question: Question.fromJson(json['question']),
+      );
+    } catch (e) {
+      print(
+          "ERROR parsing ExamSectionItem: $e, JSON keys: ${json.keys.toList()}");
+      throw e;
+    }
   }
 }

@@ -186,11 +186,11 @@ class _VocabularyGamePlayScreenState extends State<VocabularyGamePlayScreen>
           isWord: true,
         ),
       );
-
+      final List<String> parts = gameWordPairs[i].translation.split(".");
       _allCards.add(
         GameCard(
           id: i.toString(),
-          content: gameWordPairs[i].translation,
+          content: parts[0],
           isMatched: false,
           isWord: false,
         ),
@@ -403,43 +403,80 @@ class _VocabularyGamePlayScreenState extends State<VocabularyGamePlayScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.timer,
-                    size: 24 * pix,
-                    color: _timeLeft < 30 ? Colors.red : Colors.blue,
-                  ),
-                  SizedBox(width: 8 * pix),
-                  Text(
-                    _formatTime(_timeLeft),
-                    style: TextStyle(
-                      fontSize: 18 * pix,
-                      fontWeight: FontWeight.bold,
+              Container(
+                padding: EdgeInsets.symmetric(
+                    horizontal: 12 * pix, vertical: 8 * pix),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.9),
+                  borderRadius: BorderRadius.circular(16 * pix),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 5,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.timer,
+                      size: 24 * pix,
                       color: _timeLeft < 30 ? Colors.red : Colors.blue,
                     ),
-                  ),
-                ],
-              ),
-              IconButton(
-                icon: Icon(
-                  Icons.pause_circle_filled,
-                  size: 28 * pix,
-                  color: Colors.blue,
+                    SizedBox(width: 8 * pix),
+                    Text(
+                      _formatTime(_timeLeft),
+                      style: TextStyle(
+                        fontSize: 18 * pix,
+                        fontWeight: FontWeight.bold,
+                        color: _timeLeft < 30 ? Colors.red : Colors.blue,
+                      ),
+                    ),
+                  ],
                 ),
-                onPressed: _pauseGame,
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.9),
+                  borderRadius: BorderRadius.circular(16 * pix),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 5,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.pause_circle_filled,
+                    size: 28 * pix,
+                    color: Colors.blue,
+                  ),
+                  onPressed: _pauseGame,
+                ),
               ),
             ],
           ),
           SizedBox(height: 16 * pix),
-          Text(
-            'Chọn các ô từ vựng và nghĩa tiếng Việt tương ứng',
-            style: TextStyle(
-              fontSize: 16 * pix,
-              fontWeight: FontWeight.w500,
-              color: isDarkMode ? Colors.white70 : Colors.black87,
+          Container(
+            padding:
+                EdgeInsets.symmetric(horizontal: 16 * pix, vertical: 10 * pix),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12 * pix),
+              border: Border.all(color: Colors.blue.withOpacity(0.3), width: 1),
             ),
-            textAlign: TextAlign.center,
+            child: Text(
+              'Chọn các ô từ vựng và nghĩa tiếng Việt tương ứng',
+              style: TextStyle(
+                fontSize: 16 * pix,
+                fontWeight: FontWeight.w500,
+                color: Colors.blue.shade800,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
         ],
       ),
@@ -447,17 +484,25 @@ class _VocabularyGamePlayScreenState extends State<VocabularyGamePlayScreen>
   }
 
   Widget _buildGameMatrix(double pix, bool isDarkMode) {
-    // Calculate grid dimensions based on number of cards
+    // Giảm số cột để ô to hơn
     final int crossAxisCount = _getCrossAxisCount(_allCards.length);
+
+    // Tính toán kích thước tối ưu cho grid
+    final width = MediaQuery.of(context).size.width;
+    final itemWidth = (width - 40 * pix) / crossAxisCount; // Trừ đi padding
+
+    // Tính toán chiều cao dựa trên độ dài nội dung trung bình
+    final avgContentLength = _calculateAvgContentLength();
+    final aspectRatio = _getAspectRatioBasedOnContent(avgContentLength);
 
     return Padding(
       padding: EdgeInsets.all(16 * pix),
       child: GridView.builder(
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: crossAxisCount,
-          childAspectRatio: 1.0,
-          crossAxisSpacing: 8 * pix,
-          mainAxisSpacing: 8 * pix,
+          childAspectRatio: aspectRatio, // Sử dụng tỷ lệ động
+          crossAxisSpacing: 12 * pix, // Tăng khoảng cách giữa các ô
+          mainAxisSpacing: 12 * pix, // Tăng khoảng cách giữa các ô
         ),
         itemCount: _allCards.length,
         itemBuilder: (context, index) {
@@ -465,8 +510,10 @@ class _VocabularyGamePlayScreenState extends State<VocabularyGamePlayScreen>
           final bool isSelected = _selectedCard != null &&
               _selectedCard!.content == card.content &&
               _selectedCard!.isWord == card.isWord;
-          // Check if this specific card position is being animated as an incorrect match
           final bool isAnimating = _animatingCardIds.contains(index.toString());
+
+          // Tính kích thước font dựa trên độ dài nội dung
+          final fontSize = _calculateFontSize(card.content.length) * pix;
 
           return GestureDetector(
             onTap: () => _onCardTap(card),
@@ -475,38 +522,39 @@ class _VocabularyGamePlayScreenState extends State<VocabularyGamePlayScreen>
               builder: (context, child) {
                 return Container(
                   decoration: BoxDecoration(
-                    color: _getCardColor(
-                        card, isSelected, isAnimating, isDarkMode),
-                    borderRadius: BorderRadius.circular(8 * pix),
+                    color: card.isMatched
+                        ? Colors.transparent
+                        : card.isWord
+                            ? Colors.cyanAccent.withOpacity(0.2)
+                            : Colors.amberAccent.withOpacity(0.2),
+                    borderRadius:
+                        BorderRadius.circular(12 * pix), // Bo góc nhiều hơn
                     border: Border.all(
                       color: _getCardBorderColor(card, isSelected, isAnimating),
                       width: 2 * pix,
                     ),
-                    boxShadow: [
-                      if (!card.isMatched)
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                    ],
                   ),
                   child: card.isMatched
                       ? Container() // Empty container for matched cards
                       : Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(8 * pix),
-                            child: Text(
-                              card.content,
-                              style: TextStyle(
-                                fontSize: 14 * pix,
-                                fontWeight: card.isWord
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: _getCardTextColor(
-                                    card, isSelected, isAnimating, isDarkMode),
+                          child: Container(
+                            padding: EdgeInsets.all(10 * pix),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                card.content,
+                                style: TextStyle(
+                                  fontSize: fontSize, // Kích thước font động
+                                  fontWeight: card.isWord
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                  color: _getCardTextColor(card, isSelected,
+                                      isAnimating, isDarkMode),
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              textAlign: TextAlign.center,
                             ),
                           ),
                         ),
@@ -519,11 +567,40 @@ class _VocabularyGamePlayScreenState extends State<VocabularyGamePlayScreen>
     );
   }
 
+  // Tính toán số cột dựa trên số ô và kích thước màn hình
   int _getCrossAxisCount(int totalCards) {
+    // Giảm số cột xuống để ô to hơn
     if (totalCards <= 4) return 2;
-    if (totalCards <= 9) return 3;
-    if (totalCards <= 16) return 4;
-    return 4; // Default to 4 for larger numbers
+    if (totalCards <= 9) return 2; // Giảm từ 3 xuống 2
+    if (totalCards <= 16) return 3; // Giảm từ 4 xuống 3
+    return 3; // Mặc định là 3 thay vì 4
+  }
+
+  // Tính toán kích thước font dựa trên độ dài nội dung
+  double _calculateFontSize(int contentLength) {
+    if (contentLength <= 5) return 18.0;
+    if (contentLength <= 10) return 16.0;
+    if (contentLength <= 15) return 14.0;
+    if (contentLength <= 20) return 12.0;
+    return 11.0;
+  }
+
+  // Tính độ dài nội dung trung bình
+  double _calculateAvgContentLength() {
+    if (_allCards.isEmpty) return 10.0;
+    int totalLength = 0;
+    for (var card in _allCards) {
+      totalLength += card.content.length;
+    }
+    return totalLength / _allCards.length;
+  }
+
+  // Lấy tỷ lệ khung hình dựa trên độ dài nội dung
+  double _getAspectRatioBasedOnContent(double avgLength) {
+    if (avgLength <= 5) return 1.0; // Gần như vuông
+    if (avgLength <= 10) return 0.85;
+    if (avgLength <= 15) return 0.8;
+    return 0.75; // Cho phép chiều cao lớn hơn chiều rộng
   }
 
   Color _getCardColor(
@@ -572,63 +649,99 @@ class _VocabularyGamePlayScreenState extends State<VocabularyGamePlayScreen>
     }
 
     if (isSelected) {
-      return Colors.blue;
+      return Colors.blue.shade700;
     }
 
-    return isDarkMode ? Colors.white : Colors.black87;
+    return isDarkMode ? Colors.white : Colors.blueGrey.shade800;
   }
 
   Widget _buildPausedView(double pix, bool isDarkMode) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.pause_circle_filled,
-            size: 80 * pix,
-            color: Colors.blue,
-          ),
-          SizedBox(height: 24 * pix),
-          Text(
-            'Trò Chơi Tạm Dừng',
-            style: TextStyle(
-              fontSize: 24 * pix,
-              fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.white : Colors.black87,
+      child: Container(
+        margin: EdgeInsets.all(24 * pix),
+        padding: EdgeInsets.all(24 * pix),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.9),
+          borderRadius: BorderRadius.circular(24 * pix),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: Offset(0, 10),
             ),
-          ),
-          SizedBox(height: 16 * pix),
-          Text(
-            'Thời gian còn lại: ${_formatTime(_timeLeft)}',
-            style: TextStyle(
-              fontSize: 18 * pix,
-              color: isDarkMode ? Colors.white70 : Colors.black54,
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.pause_circle_filled,
+              size: 80 * pix,
+              color: Colors.blue,
             ),
-          ),
-          SizedBox(height: 32 * pix),
-          ElevatedButton.icon(
-            icon: Icon(Icons.play_arrow),
-            label: Text('Tiếp Tục Chơi'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              padding: EdgeInsets.symmetric(
-                  horizontal: 24 * pix, vertical: 12 * pix),
-              textStyle: TextStyle(fontSize: 16 * pix),
+            SizedBox(height: 24 * pix),
+            Text(
+              'Trò Chơi Tạm Dừng',
+              style: TextStyle(
+                fontSize: 24 * pix,
+                fontWeight: FontWeight.bold,
+                color: Colors.blueGrey.shade800,
+              ),
             ),
-            onPressed: _resumeGame,
-          ),
-          SizedBox(height: 16 * pix),
-          TextButton.icon(
-            icon: Icon(Icons.restart_alt),
-            label: Text('Chơi Lại'),
-            style: TextButton.styleFrom(
-              padding: EdgeInsets.symmetric(
-                  horizontal: 24 * pix, vertical: 12 * pix),
-              textStyle: TextStyle(fontSize: 16 * pix),
+            SizedBox(height: 16 * pix),
+            Container(
+              padding:
+                  EdgeInsets.symmetric(horizontal: 16 * pix, vertical: 8 * pix),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12 * pix),
+              ),
+              child: Text(
+                'Thời gian còn lại: ${_formatTime(_timeLeft)}',
+                style: TextStyle(
+                  fontSize: 18 * pix,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.blue.shade700,
+                ),
+              ),
             ),
-            onPressed: _resetGame,
-          ),
-        ],
+            SizedBox(height: 32 * pix),
+            ElevatedButton.icon(
+              icon: Icon(Icons.play_arrow),
+              label: Text('Tiếp Tục Chơi'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(
+                    horizontal: 24 * pix, vertical: 12 * pix),
+                textStyle:
+                    TextStyle(fontSize: 16 * pix, fontWeight: FontWeight.bold),
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16 * pix),
+                ),
+              ),
+              onPressed: _resumeGame,
+            ),
+            SizedBox(height: 16 * pix),
+            TextButton.icon(
+              icon: Icon(Icons.restart_alt),
+              label: Text('Chơi Lại'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.blueGrey.shade700,
+                padding: EdgeInsets.symmetric(
+                    horizontal: 24 * pix, vertical: 12 * pix),
+                textStyle: TextStyle(fontSize: 16 * pix),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16 * pix),
+                  side: BorderSide(color: Colors.blue.withOpacity(0.3)),
+                ),
+              ),
+              onPressed: _resetGame,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -423,6 +423,7 @@ class _VocabularyListeningGameScreenState
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -462,33 +463,35 @@ class _VocabularyListeningGameScreenState
     }
 
     if (_hasError) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              color: Colors.red,
-              size: 50 * pix,
-            ),
-            SizedBox(height: 16 * pix),
-            Text(
-              _errorMessage,
-              style: TextStyle(
-                fontSize: 16 * pix,
+      return SingleChildScrollView(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
                 color: Colors.red,
+                size: 50 * pix,
               ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 16 * pix),
-            ElevatedButton(
-              onPressed: _loadGameData,
-              child: Text('Thử lại'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xff165598),
+              SizedBox(height: 16 * pix),
+              Text(
+                _errorMessage,
+                style: TextStyle(
+                  fontSize: 16 * pix,
+                  color: Colors.red,
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
-          ],
+              SizedBox(height: 16 * pix),
+              ElevatedButton(
+                onPressed: _loadGameData,
+                child: Text('Thử lại'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xff165598),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }

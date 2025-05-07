@@ -342,6 +342,9 @@ class _DoListenscreenState extends State<DoListenscreen>
                     ),
                   ),
                 ),
+                SizedBox(
+                  width: 10,
+                ),
                 ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(context);

@@ -107,129 +107,140 @@ class _ExercisescreenState extends State<Exercisescreen>
                   },
                 ];
 
-                return Column(
-                  children: [
-                    Container(
-                      width: size.width,
-                      height: size.height - 150 * pix,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          left: 16 * pix,
-                          right: 16 * pix,
-                          top: 16 * pix,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(10 * pix),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(15 * pix),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    spreadRadius: 1,
-                                    blurRadius: 10,
-                                    offset: Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 50 * pix,
-                                    height: 50 * pix,
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue.shade50,
-                                      shape: BoxShape.circle,
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    setState(() {
+                      isLoading = true;
+                    });
+                    await exProvider.fetchProgress();
+                    setState(() {
+                      isLoading = false;
+                    });
+                  },
+                  child: Column(
+                    children: [
+                      Container(
+                        width: size.width,
+                        height: size.height - 150 * pix,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            left: 16 * pix,
+                            right: 16 * pix,
+                            top: 16 * pix,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(10 * pix),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(15 * pix),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.05),
+                                      spreadRadius: 1,
+                                      blurRadius: 10,
+                                      offset: Offset(0, 3),
                                     ),
-                                    child: Icon(
-                                      Icons.school,
-                                      size: 28 * pix,
-                                      color: Colors.blue.shade700,
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 50 * pix,
+                                      height: 50 * pix,
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.shade50,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.school,
+                                        size: 28 * pix,
+                                        color: Colors.blue.shade700,
+                                      ),
                                     ),
-                                  ),
-                                  SizedBox(width: 16 * pix),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Luyện tập hôm nay',
-                                          style: TextStyle(
-                                            fontSize: 18 * pix,
-                                            fontWeight: FontWeight.bold,
-                                            fontFamily: 'BeVietnamPro',
+                                    SizedBox(width: 16 * pix),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Luyện tập hôm nay',
+                                            style: TextStyle(
+                                              fontSize: 18 * pix,
+                                              fontWeight: FontWeight.bold,
+                                              fontFamily: 'BeVietnamPro',
+                                            ),
                                           ),
-                                        ),
-                                        SizedBox(height: 4 * pix),
-                                        Text(
-                                          'Chọn lĩnh vực bạn muốn luyện tập',
-                                          style: TextStyle(
-                                            fontSize: 14 * pix,
-                                            color: Colors.grey.shade700,
-                                            fontFamily: 'BeVietnamPro',
+                                          SizedBox(height: 4 * pix),
+                                          Text(
+                                            'Chọn lĩnh vực bạn muốn luyện tập',
+                                            style: TextStyle(
+                                              fontSize: 14 * pix,
+                                              color: Colors.grey.shade700,
+                                              fontFamily: 'BeVietnamPro',
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(height: 24 * pix),
-                            Padding(
-                              padding: EdgeInsets.only(
-                                left: 4 * pix,
-                              ),
-                              child: Text(
-                                'Chọn một lĩnh vực',
-                                style: TextStyle(
-                                  fontSize: 16 * pix,
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'BeVietnamPro',
-                                  color: Colors.grey.shade800,
+                                  ],
                                 ),
                               ),
-                            ),
-                            SizedBox(height: 10 * pix),
-                            Expanded(
-                              child: ListView.builder(
-                                itemCount: exerciseTypes.length,
-                                itemBuilder: (context, index) {
-                                  final exercise = exerciseTypes[index];
-                                  return _buildExerciseCard(
-                                    title: exercise['title'],
-                                    subtitle: exercise['subtitle'],
-                                    img: exercise['img'],
-                                    icon: exercise['icon'],
-                                    color: exercise['color'],
-                                    cardColor: exercise['cardColor'],
-                                    completedLessons:
-                                        exercise['completedLessons'],
-                                    totalLessons: exercise['totalLessons'],
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => Levelscreen(
-                                            type: exercise['type'],
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  );
-                                },
+                              SizedBox(height: 24 * pix),
+                              Padding(
+                                padding: EdgeInsets.only(
+                                  left: 4 * pix,
+                                ),
+                                child: Text(
+                                  'Chọn một lĩnh vực',
+                                  style: TextStyle(
+                                    fontSize: 16 * pix,
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: 'BeVietnamPro',
+                                    color: Colors.grey.shade800,
+                                  ),
+                                ),
                               ),
-                            ),
-                            SizedBox(height: 16 * pix),
-                          ],
+                              SizedBox(height: 10 * pix),
+                              Expanded(
+                                child: ListView.builder(
+                                  itemCount: exerciseTypes.length,
+                                  itemBuilder: (context, index) {
+                                    final exercise = exerciseTypes[index];
+                                    return _buildExerciseCard(
+                                      title: exercise['title'],
+                                      subtitle: exercise['subtitle'],
+                                      img: exercise['img'],
+                                      icon: exercise['icon'],
+                                      color: exercise['color'],
+                                      cardColor: exercise['cardColor'],
+                                      completedLessons:
+                                          exercise['completedLessons'],
+                                      totalLessons: exercise['totalLessons'],
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => Levelscreen(
+                                              type: exercise['type'],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
+                              ),
+                              SizedBox(height: 16 * pix),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 );
               }),
             ),

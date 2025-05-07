@@ -21,7 +21,7 @@ class DifficultyRatingDialog extends StatelessWidget {
         builder: (context, vocabProvider, child) {
       if (vocabProvider.isLoading) {
         return Center(
-          child: CircularProgressIndicator(),
+          child: Container(),
         );
       }
       return AlertDialog(

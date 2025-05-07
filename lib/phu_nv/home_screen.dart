@@ -5,6 +5,8 @@ import 'package:language_app/phu_nv/login_signup/login_screen.dart';
 import 'package:language_app/phu_nv/notification/notification_screen.dart';
 import 'package:language_app/phu_nv/widget/Network_Img.dart';
 import 'package:language_app/phu_nv/widget/exercise_section.dart';
+import 'package:language_app/phu_nv/widget/help_dialog.dart';
+import 'package:language_app/phu_nv/widget/tem_con_dialog.dart';
 import 'package:language_app/phu_nv/widget/topic_widget.dart';
 import 'package:language_app/provider/auth_provider.dart';
 import 'package:language_app/provider/notification_provider.dart';
@@ -87,85 +89,101 @@ class _HomescreenState extends State<Homescreen>
             ],
           ),
         ),
-        child: Stack(
-          children: [
-            _buildScrollableContent(size, pix),
-            _buildHeader(size, pix),
-            Positioned(
-              top: 40 * pix,
-              right: 20 * pix,
-              child: Container(
-                  alignment: Alignment.centerRight,
-                  child: Consumer<NotificationProvider>(
-                    builder: (context, notiProvider, child) {
-                      if (notiProvider.loading) {
-                        Center(child: CircularProgressIndicator());
-                      }
-                      final unreadCount =
-                          Provider.of<NotificationProvider>(context)
-                              .unreadCount;
+        child: RefreshIndicator(
+          onRefresh: () async {
+            final progressProvider =
+                Provider.of<ProgressProvider>(context, listen: false);
+            await progressProvider.getTopicProgress();
+            await progressProvider.getExerciseProgress();
+            await progressProvider.getExamProgress();
 
-                      return Stack(
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.notifications,
-                                color: Colors.white, size: 30 * pix),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => Notificationsscreen()),
-                              );
-                            },
-                          ),
-                          if (unreadCount > 0)
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              child: Container(
-                                padding: EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                constraints: BoxConstraints(
-                                  minWidth: 16,
-                                  minHeight: 16,
-                                ),
-                                child: Text(
-                                  unreadCount > 99
-                                      ? '99+'
-                                      : unreadCount.toString(),
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
+            final topicProvider =
+                Provider.of<TopicProvider>(context, listen: false);
+            await topicProvider.fetchTopics(level: 1);
+            final notiProvider =
+                Provider.of<NotificationProvider>(context, listen: false);
+            await notiProvider.getNumberNewNotification();
+          },
+          child: Stack(
+            children: [
+              _buildScrollableContent(size, pix),
+              _buildHeader(size, pix),
+              Positioned(
+                top: 40 * pix,
+                right: 20 * pix,
+                child: Container(
+                    alignment: Alignment.centerRight,
+                    child: Consumer<NotificationProvider>(
+                      builder: (context, notiProvider, child) {
+                        if (notiProvider.loading) {
+                          Center(child: CircularProgressIndicator());
+                        }
+                        final unreadCount =
+                            Provider.of<NotificationProvider>(context)
+                                .unreadCount;
+
+                        return Stack(
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.notifications,
+                                  color: Colors.white, size: 30 * pix),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => Notificationsscreen()),
+                                );
+                              },
+                            ),
+                            if (unreadCount > 0)
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: Container(
+                                  padding: EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
-                                  textAlign: TextAlign.center,
+                                  constraints: BoxConstraints(
+                                    minWidth: 16,
+                                    minHeight: 16,
+                                  ),
+                                  child: Text(
+                                    unreadCount > 99
+                                        ? '99+'
+                                        : unreadCount.toString(),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
-                      );
-                    },
-                  )),
-            ),
-            Positioned(
-              bottom: 0 * pix,
-              left: 0,
-              right: 0,
-              child: FadeTransition(
-                opacity: _animation,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, 1),
-                    end: Offset.zero,
-                  ).animate(_animation),
-                  child: Bottombar(type: 1),
+                          ],
+                        );
+                      },
+                    )),
+              ),
+              Positioned(
+                bottom: 0 * pix,
+                left: 0,
+                right: 0,
+                child: FadeTransition(
+                  opacity: _animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 1),
+                      end: Offset.zero,
+                    ).animate(_animation),
+                    child: Bottombar(type: 1),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -268,7 +286,11 @@ class _HomescreenState extends State<Homescreen>
                                                 Colors.blue,
                                                 () {
                                                   Navigator.pop(context);
-                                                  // Navigate to help screen
+                                                  showDialog(
+                                                    context: context,
+                                                    builder: (context) =>
+                                                        const HelpDialog(),
+                                                  );
                                                 },
                                               ),
                                               SizedBox(height: 10 * pix),
@@ -278,7 +300,11 @@ class _HomescreenState extends State<Homescreen>
                                                 Colors.green,
                                                 () {
                                                   Navigator.pop(context);
-                                                  // Navigate to settings screen
+                                                  showDialog(
+                                                    context: context,
+                                                    builder: (context) =>
+                                                        const TermsAndConditionsDialog(),
+                                                  );
                                                 },
                                               ),
                                               SizedBox(height: 10 * pix),

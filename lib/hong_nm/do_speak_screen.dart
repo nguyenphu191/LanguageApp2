@@ -405,6 +405,7 @@ class _DoSpeakscreenState extends State<DoSpeakscreen>
                     padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   ),
                 ),
+                SizedBox(width: 10),
                 ElevatedButton.icon(
                   onPressed: () {
                     Navigator.of(context).pop();

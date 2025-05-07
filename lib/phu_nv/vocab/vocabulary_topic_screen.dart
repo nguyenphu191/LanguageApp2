@@ -266,14 +266,6 @@ class _VocabularyTopicscreenState extends State<VocabularyTopicscreen>
               ),
               Row(
                 children: [
-                  // Nút refresh để tải lại dữ liệu
-                  IconButton(
-                    icon: Icon(
-                      Icons.refresh,
-                      color: Color(0xff165598),
-                    ),
-                    onPressed: _loadData,
-                  ),
                   // Nút tìm kiếm
                   IconButton(
                     icon: Icon(

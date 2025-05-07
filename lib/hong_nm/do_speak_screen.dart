@@ -38,6 +38,8 @@ class _DoSpeakscreenState extends State<DoSpeakscreen>
   bool completedExercise = false; // Đánh dấu đã hoàn thành bài tập
   bool showingDialog = false; // Tránh hiển thị dialog nhiều lần
 
+  final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -56,6 +58,7 @@ class _DoSpeakscreenState extends State<DoSpeakscreen>
   void dispose() {
     _animationController.dispose();
     _audioPlayer.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -101,7 +104,7 @@ class _DoSpeakscreenState extends State<DoSpeakscreen>
   }
 
   // Bắt đầu nghe
-  void startListening(String word) async {
+  void startListening(String text) async {
     if (!_isSpeechInitialized || !_isMicrophonePermissionGranted) {
       print(
           "Speech-to-Text chưa được khởi tạo hoặc không có quyền microphone!");
@@ -120,14 +123,15 @@ class _DoSpeakscreenState extends State<DoSpeakscreen>
 
       speech.listen(
         onResult: (result) {
-          final targetWord = word.toLowerCase();
+          final targetText = text.toLowerCase();
           final recognized = result.recognizedWords.toLowerCase();
 
           setState(() {
             recognizedText = result.recognizedWords;
 
-            // Đánh giá phát âm dựa trên nhận dạng từ
-            if (recognized.contains(targetWord)) {
+            // Đánh giá phát âm dựa trên nhận dạng từ/câu
+            if (recognized.contains(targetText) ||
+                targetText.contains(recognized)) {
               // Tính điểm dựa trên độ chính xác
               double confidence = result.confidence;
               pronunciationScore = (confidence * 100).clamp(0.0, 100.0);
@@ -141,9 +145,9 @@ class _DoSpeakscreenState extends State<DoSpeakscreen>
                 assessmentFeedback = "Hãy cố gắng phát âm rõ ràng hơn.";
               }
             } else if (recognized.isNotEmpty) {
-              // Từ không được nhận dạng đúng
+              // Từ/câu không được nhận dạng đúng
               pronunciationScore =
-                  calculateSimilarityScore(targetWord, recognized);
+                  calculateSimilarityScore(targetText, recognized);
               assessmentFeedback = "Phát âm chưa chính xác. Hãy thử lại.";
             }
           });
@@ -152,26 +156,36 @@ class _DoSpeakscreenState extends State<DoSpeakscreen>
     }
   }
 
-  // Tính toán điểm tương đồng giữa hai chuỗi (thuật toán Levenshtein đơn giản hóa)
+  // Tính toán điểm tương đồng giữa hai chuỗi với phương pháp cải tiến cho câu dài
   double calculateSimilarityScore(String target, String actual) {
     if (actual.isEmpty) return 0;
     if (target == actual) return 100;
 
-    // Kiểm tra nếu actual chứa target
-    if (actual.contains(target)) return 80;
+    // Tính số từ chung giữa target và actual
+    List<String> targetWords = target.split(' ');
+    List<String> actualWords = actual.split(' ');
+    int commonWords = 0;
 
-    // Kiểm tra âm đầu tiên
-    if (actual.startsWith(target.substring(0, 1))) {
-      // Có một số ký tự đúng
-      int commonChars = 0;
-      for (int i = 0; i < target.length && i < actual.length; i++) {
-        if (target[i] == actual[i]) commonChars++;
+    for (String word in actualWords) {
+      if (targetWords.contains(word)) {
+        commonWords++;
       }
-
-      return (commonChars / target.length * 70).clamp(0.0, 70.0);
     }
 
-    return 30.0; // Điểm cơ bản khi phát âm hoàn toàn khác
+    // Tính tỷ lệ từ chung
+    double wordMatchRatio =
+        targetWords.isEmpty ? 0 : (commonWords / targetWords.length);
+
+    // Kiểm tra nếu actual chứa target
+    if (actual.contains(target)) return 85;
+
+    // Nếu target chứa actual (nhận dạng một phần của câu)
+    if (target.contains(actual) && actual.length > 5) {
+      return 65 + (actual.length / target.length * 15);
+    }
+
+    // Trả về điểm dựa trên tỷ lệ từ khớp
+    return (wordMatchRatio * 75).clamp(0.0, 75.0);
   }
 
   // Dừng nghe
@@ -183,7 +197,7 @@ class _DoSpeakscreenState extends State<DoSpeakscreen>
     }
   }
 
-  // Đọc từ bằng TTS
+  // Đọc từ/câu bằng TTS
   Future<void> speak(String text) async {
     final url =
         "https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=${Uri.encodeComponent(text)}";
@@ -440,6 +454,17 @@ class _DoSpeakscreenState extends State<DoSpeakscreen>
     return Colors.red;
   }
 
+  // Tính toán kích thước font dựa trên độ dài của câu
+  double calculateFontSize(String text, double basePix) {
+    int length = text.length;
+    if (length <= 10) return 36 * basePix;
+    if (length <= 20) return 32 * basePix;
+    if (length <= 40) return 28 * basePix;
+    if (length <= 60) return 24 * basePix;
+    if (length <= 80) return 22 * basePix;
+    return 20 * basePix; // Cho câu rất dài
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -463,123 +488,133 @@ class _DoSpeakscreenState extends State<DoSpeakscreen>
               child: TopBar(title: widget.exercise.name, isBack: true),
             ),
             Positioned(
-                top: 100 * pix,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Consumer<ExerciseProvider>(
-                    builder: (context, exerciseProvider, child) {
-                  // Kiểm tra xem đã fetch exercise thành công chưa
-                  if (exerciseProvider.isLoading) {
-                    return Center(
-                      child: CircularProgressIndicator(),
-                    );
-                  }
+              top: 100 * pix,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Consumer<ExerciseProvider>(
+                  builder: (context, exerciseProvider, child) {
+                // Kiểm tra xem đã fetch exercise thành công chưa
+                if (exerciseProvider.isLoading) {
+                  return Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
 
-                  final words = exerciseProvider.speakingDataModel?.data ?? [];
+                final words = exerciseProvider.speakingDataModel?.data ?? [];
 
-                  // Kiểm tra nếu không có dữ liệu
-                  if (words.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.warning_amber_rounded,
-                            size: 80,
-                            color: Colors.amber,
+                // Kiểm tra nếu không có dữ liệu
+                if (words.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          size: 80,
+                          color: Colors.amber,
+                        ),
+                        SizedBox(height: 16 * pix),
+                        Text(
+                          "Không tìm thấy dữ liệu luyện phát âm cho bài tập này",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey.shade700,
                           ),
-                          SizedBox(height: 16 * pix),
-                          Text(
-                            "Không tìm thấy dữ liệu luyện phát âm cho bài tập này",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade700,
-                            ),
-                            textAlign: TextAlign.center,
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 20),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            // Thử tải lại dữ liệu
+                            Provider.of<ExerciseProvider>(context,
+                                    listen: false)
+                                .fetchSpeaking(widget.exercise.id);
+                          },
+                          icon: Icon(Icons.refresh),
+                          label: Text("Thử lại"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.indigo,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 30 * pix, vertical: 15 * pix),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30)),
                           ),
-                          SizedBox(height: 20),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              // Thử tải lại dữ liệu
-                              Provider.of<ExerciseProvider>(context,
-                                      listen: false)
-                                  .fetchSpeaking(widget.exercise.id);
-                            },
-                            icon: Icon(Icons.refresh),
-                            label: Text("Thử lại"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.indigo,
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 30 * pix, vertical: 15 * pix),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
+                        ),
+                      ],
+                    ),
+                  );
+                }
 
-                  return Padding(
-                    padding: EdgeInsets.all(16 * pix),
+                // Tính font size dựa trên độ dài của câu hiện tại
+                final currentText = words[currentWordIndex].sentence;
+                final dynamicFontSize = calculateFontSize(currentText, pix);
+
+                return Padding(
+                  padding: EdgeInsets.all(16 * pix),
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
                     child: Column(
                       children: [
-                        Expanded(
-                          flex: 3, // Ưu tiên cao hơn
-                          child: Card(
-                            elevation: 8,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15)),
-                            child: Container(
-                              width: double.infinity,
-                              padding: EdgeInsets.all(12 * pix),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min, // Thêm dòng này
-                                children: [
-                                  Text(
-                                    "Từ cần phát âm:",
-                                    style: TextStyle(
-                                        fontSize: 14 * pix,
-                                        color: Colors.grey.shade700),
+                        // Thẻ từ/câu cần phát âm
+                        Card(
+                          elevation: 8,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15)),
+                          child: Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.all(12 * pix),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: double.infinity,
+                                  padding: EdgeInsets.all(12 * pix),
+                                  decoration: BoxDecoration(
+                                    color: Colors.indigo.withOpacity(0.05),
+                                    borderRadius:
+                                        BorderRadius.circular(10 * pix),
+                                    border: Border.all(
+                                      color: Colors.indigo.withOpacity(0.2),
+                                      width: 1,
+                                    ),
                                   ),
-                                  SizedBox(height: 8 * pix),
-                                  Text(
-                                    words[currentWordIndex].sentence,
+                                  child: Text(
+                                    currentText,
                                     style: TextStyle(
-                                      fontSize: 36 * pix,
+                                      fontSize: dynamicFontSize,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.indigo,
                                     ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                  SizedBox(
-                                      height: 16 * pix), // Giảm khoảng cách
-                                  // Hiển thị bản dịch tiếng Việt
-                                  Text(
-                                    "Nghĩa: ${words[currentWordIndex].translation}",
-                                    style: TextStyle(
-                                      fontSize: 16 * pix,
-                                      fontStyle: FontStyle.italic,
-                                      color: Colors.grey.shade700,
-                                    ),
+                                ),
+                                SizedBox(height: 16 * pix),
+                                // Hiển thị bản dịch tiếng Việt
+                                Text(
+                                  "Nghĩa: ${words[currentWordIndex].translation}",
+                                  style: TextStyle(
+                                    fontSize: 16 * pix,
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.grey.shade700,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
 
-                        SizedBox(height: 10), // Giảm khoảng cách
+                        SizedBox(height: 16 * pix),
 
-                        // Nút nghe từ - không bọc trong Expanded
+                        // Nút nghe từ
                         ElevatedButton.icon(
                           onPressed: () =>
                               speak(words[currentWordIndex].sentence),
                           icon: Icon(Icons.volume_up, size: 28),
                           label:
-                              Text("Nghe từ", style: TextStyle(fontSize: 18)),
+                              Text("Nghe mẫu", style: TextStyle(fontSize: 18)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: Colors.indigo,
@@ -590,7 +625,7 @@ class _DoSpeakscreenState extends State<DoSpeakscreen>
                           ),
                         ),
 
-                        SizedBox(height: 10), // Giảm khoảng cách
+                        SizedBox(height: 16 * pix),
 
                         // Nút thu âm
                         _isMicrophonePermissionGranted && _isSpeechInitialized
@@ -643,117 +678,238 @@ class _DoSpeakscreenState extends State<DoSpeakscreen>
                                 textAlign: TextAlign.center,
                               ),
 
-                        SizedBox(height: 10), // Giảm khoảng cách
+                        SizedBox(height: 16 * pix),
 
-                        // Kết quả nhận diện trong một thẻ - bọc trong Expanded
-                        Expanded(
-                          flex: 4, // Ưu tiên cao nhất
-                          child: Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(15),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 10,
-                                  offset: Offset(0, 5),
+                        // Kết quả nhận diện trong một thẻ
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(20 * pix),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(15 * pix),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "Kết quả",
+                                style: TextStyle(
+                                  fontSize: 18 * pix,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey.shade700,
                                 ),
-                              ],
-                            ),
-                            child: SingleChildScrollView(
-                              // Thêm SingleChildScrollView để có thể cuộn khi nội dung dài
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min, // Thêm dòng này
-                                children: [
-                                  Text(
-                                    "Kết quả",
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.grey.shade700,
-                                    ),
+                              ),
+                              SizedBox(height: 10 * pix),
+
+                              // Kết quả nhận dạng với container có chiều cao cố định và khả năng cuộn
+                              Container(
+                                height: 100 * pix, // Chiều cao cố định
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(10 * pix),
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
                                   ),
-                                  SizedBox(height: 10),
-                                  Text(
+                                ),
+                                padding: EdgeInsets.all(8 * pix),
+                                child: SingleChildScrollView(
+                                  child: Text(
                                     recognizedText.isEmpty
                                         ? "Chưa có ghi âm"
                                         : recognizedText,
                                     style: TextStyle(
-                                      fontSize: 22,
+                                      fontSize: 18 * pix,
                                       fontWeight: FontWeight.w500,
                                       color: Colors.black87,
                                     ),
                                   ),
-                                  SizedBox(height: 15),
-                                  pronunciationScore > 0
-                                      ? LinearProgressIndicator(
-                                          value: pronunciationScore / 100,
-                                          backgroundColor: Colors.grey.shade200,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                  getAccuracyColor()),
-                                          minHeight: 10,
-                                          borderRadius:
-                                              BorderRadius.circular(5),
-                                        )
-                                      : SizedBox(),
-                                  SizedBox(height: 10),
-                                  pronunciationScore > 0
-                                      ? Text(
-                                          "Độ chính xác: ${pronunciationScore.toStringAsFixed(1)}%",
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: getAccuracyColor(),
-                                          ),
-                                        )
-                                      : SizedBox(),
-                                  SizedBox(height: 10),
-                                  assessmentFeedback.isNotEmpty
-                                      ? Text(
-                                          assessmentFeedback,
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontStyle: FontStyle.italic,
-                                            color: Colors.black87,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        )
-                                      : SizedBox(),
-                                ],
+                                ),
                               ),
-                            ),
+                              SizedBox(height: 15 * pix),
+                              pronunciationScore > 0
+                                  ? Column(
+                                      children: [
+                                        // Điểm số với hiệu ứng tốt hơn
+                                        Container(
+                                          width: double.infinity,
+                                          height: 16 * pix,
+                                          decoration: BoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(8 * pix),
+                                            color: Colors.grey.shade200,
+                                          ),
+                                          child: Stack(
+                                            children: [
+                                              FractionallySizedBox(
+                                                widthFactor:
+                                                    pronunciationScore / 100,
+                                                child: Container(
+                                                  decoration: BoxDecoration(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            8 * pix),
+                                                    gradient: LinearGradient(
+                                                      colors: [
+                                                        getAccuracyColor()
+                                                            .withOpacity(0.7),
+                                                        getAccuracyColor(),
+                                                      ],
+                                                      begin:
+                                                          Alignment.centerLeft,
+                                                      end:
+                                                          Alignment.centerRight,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        SizedBox(height: 8 * pix),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              "Độ chính xác: ",
+                                              style: TextStyle(
+                                                fontSize: 16 * pix,
+                                                fontWeight: FontWeight.w500,
+                                                color: Colors.grey.shade800,
+                                              ),
+                                            ),
+                                            Text(
+                                              "${pronunciationScore.toStringAsFixed(1)}%",
+                                              style: TextStyle(
+                                                fontSize: 18 * pix,
+                                                fontWeight: FontWeight.bold,
+                                                color: getAccuracyColor(),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    )
+                                  : SizedBox(),
+                              SizedBox(height: 10 * pix),
+                              // Phản hồi với hiệu ứng tốt hơn
+                              assessmentFeedback.isNotEmpty
+                                  ? Container(
+                                      padding: EdgeInsets.all(10 * pix),
+                                      decoration: BoxDecoration(
+                                        color: pronunciationScore >= 80
+                                            ? Colors.green.withOpacity(0.1)
+                                            : pronunciationScore >= 60
+                                                ? Colors.orange.withOpacity(0.1)
+                                                : Colors.red.withOpacity(0.1),
+                                        borderRadius:
+                                            BorderRadius.circular(8 * pix),
+                                        border: Border.all(
+                                          color: pronunciationScore >= 80
+                                              ? Colors.green.withOpacity(0.3)
+                                              : pronunciationScore >= 60
+                                                  ? Colors.orange
+                                                      .withOpacity(0.3)
+                                                  : Colors.red.withOpacity(0.3),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            pronunciationScore >= 80
+                                                ? Icons.check_circle
+                                                : pronunciationScore >= 60
+                                                    ? Icons.info
+                                                    : Icons.error,
+                                            color: pronunciationScore >= 80
+                                                ? Colors.green
+                                                : pronunciationScore >= 60
+                                                    ? Colors.orange
+                                                    : Colors.red,
+                                          ),
+                                          SizedBox(width: 8 * pix),
+                                          Expanded(
+                                            child: Text(
+                                              assessmentFeedback,
+                                              style: TextStyle(
+                                                fontSize: 16 * pix,
+                                                fontStyle: FontStyle.italic,
+                                                color: pronunciationScore >= 80
+                                                    ? Colors.green.shade800
+                                                    : pronunciationScore >= 60
+                                                        ? Colors.orange.shade800
+                                                        : Colors.red.shade800,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : SizedBox(),
+                            ],
                           ),
                         ),
 
-                        SizedBox(height: 10), // Giảm khoảng cách
+                        SizedBox(height: 16 * pix),
 
-                        // Hiển thị tiến trình - Không trong Expanded
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              "Tiến trình: ",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey.shade700,
+                        // Hiển thị tiến trình với thiết kế đẹp hơn
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16 * pix,
+                            vertical: 8 * pix,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.8),
+                            borderRadius: BorderRadius.circular(30 * pix),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 5,
+                                offset: Offset(0, 2),
                               ),
-                            ),
-                            Text(
-                              "${currentWordIndex + 1}/${words.length}",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.indigo,
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "Tiến trình: ",
+                                style: TextStyle(
+                                  fontSize: 16 * pix,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey.shade700,
+                                ),
                               ),
-                            ),
-                          ],
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 10 * pix,
+                                  vertical: 4 * pix,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.indigo.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(15 * pix),
+                                ),
+                                child: Text(
+                                  "${currentWordIndex + 1}/${words.length}",
+                                  style: TextStyle(
+                                    fontSize: 16 * pix,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.indigo,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
 
-                        SizedBox(height: 10), // Giảm khoảng cách
+                        SizedBox(height: 16 * pix),
 
                         // Nút chuyển sang từ tiếp theo hoặc hoàn thành
                         ElevatedButton.icon(
@@ -771,18 +927,26 @@ class _DoSpeakscreenState extends State<DoSpeakscreen>
                                 currentWordIndex == words.length - 1
                                     ? Colors.green
                                     : Colors.amber,
-                            foregroundColor: Colors.black87,
+                            foregroundColor:
+                                currentWordIndex == words.length - 1
+                                    ? Colors.white
+                                    : Colors.black87,
                             padding: EdgeInsets.symmetric(
                                 horizontal: 40, vertical: 15),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(30)),
+                            elevation: 4,
                           ),
                         ),
-                        SizedBox(height: 10), // Giảm khoảng cách
+                        SizedBox(
+                            height: 32 *
+                                pix), // Khoảng trống dưới cùng để tránh bị che khuất
                       ],
                     ),
-                  );
-                })),
+                  ),
+                );
+              }),
+            ),
           ],
         ),
       ),

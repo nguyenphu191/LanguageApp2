@@ -51,8 +51,6 @@ Future<void> main() async {
   // Request permissions
   await Permission.microphone.request();
   // await Permission.storage.request();
-
-  // Initialize notifications
   if (!kIsWeb) {
     try {
       const AndroidInitializationSettings initializationSettingsAndroid =

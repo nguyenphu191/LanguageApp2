@@ -1433,7 +1433,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                 ),
               ),
               Positioned(
-                top: 80 * pix,
+                top: 100 * pix,
                 left: 0,
                 right: 0,
                 bottom: 0,

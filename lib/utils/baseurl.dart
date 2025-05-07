@@ -1,5 +1,5 @@
 class UrlUtils {
   static String getBaseUrl() {
-    return "http://192.168.0.100:3000/";
+    return "http://172.11.6.151:3000/";
   }
 }

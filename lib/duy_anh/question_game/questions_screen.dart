@@ -44,6 +44,9 @@ class _QuestionsScreenState extends State<QuestionsScreen>
     // Clear existing exams first
     examProvider.clearExams();
 
+    // Also refresh the overview data
+    examProvider.fetchExamOverview(forceRefresh: true);
+
     // Then load exams data based on type
     examProvider.fetchExamsByType(widget.examType).then((_) {
       if (mounted) {
@@ -89,6 +92,8 @@ class _QuestionsScreenState extends State<QuestionsScreen>
       });
 
       try {
+        // Also refresh the overview data
+        await examProvider.fetchExamOverview(forceRefresh: true);
         await examProvider.refreshExams(widget.examType);
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(

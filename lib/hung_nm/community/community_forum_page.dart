@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:language_app/models/post_model.dart';
 import 'package:language_app/phu_nv/Notification/notification_screen.dart';
 import 'package:language_app/provider/post_provider.dart';
 import 'package:language_app/provider/user_provider.dart';
-import 'package:language_app/widget/top_bar.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:lottie/lottie.dart';
 import 'forum_detail_page.dart';
 import 'create_post_page.dart';
 import 'search_page.dart';
@@ -34,6 +36,28 @@ class _CommunityForumPageState extends State<CommunityForumPage>
     'Khác'
   ];
 
+  // Các icon cho categories
+  final List<IconData> _filterIcons = [
+    Icons.apps,
+    Icons.format_quote,
+    Icons.book,
+    Icons.record_voice_over,
+    Icons.mic,
+    Icons.edit,
+    Icons.more_horiz
+  ];
+
+  // Các màu sắc gradient cho từng category
+  final List<List<Color>> _filterGradients = [
+    [Colors.blue, Colors.lightBlue],
+    [Colors.purple, Colors.purpleAccent],
+    [Colors.green, Colors.lightGreen],
+    [Colors.orange, Colors.amber],
+    [Colors.red, Colors.redAccent],
+    [Colors.indigo, Colors.indigoAccent],
+    [Colors.grey, Colors.blueGrey],
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +67,12 @@ class _CommunityForumPageState extends State<CommunityForumPage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
+
+    // Thiết lập màu thanh trạng thái
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ));
   }
 
   Future<void> _loadData() async {
@@ -69,6 +99,7 @@ class _CommunityForumPageState extends State<CommunityForumPage>
     _searchController.dispose();
     super.dispose();
   }
+
   Future<void> _likePost(PostModel post) async {
     // Tránh double click
     if (_isLiking) return;
@@ -80,9 +111,7 @@ class _CommunityForumPageState extends State<CommunityForumPage>
     try {
       final userId = Provider.of<UserProvider>(context, listen: false).user?.id;
       if (post.likes!.any((like) => like.userId == userId)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Bạn đã thích bài viết này')),
-        );
+        _showSnackBar('Bạn đã thích bài viết này');
         setState(() {
           _isLiking = false;
         });
@@ -95,56 +124,66 @@ class _CommunityForumPageState extends State<CommunityForumPage>
         setState(() {
           _isLiking = false;
         });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã thích bài viết')),
-        );
+        _showSnackBar('Đã thích bài viết');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể thích bài viết')),
-        );
+        _showSnackBar('Không thể thích bài viết');
         setState(() {
           _isLiking = false;
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: ${e.toString()}')),
-      );
+      _showSnackBar('Lỗi: ${e.toString()}');
       setState(() {
         _isLiking = false;
       });
     }
   }
 
+  // Hiển thị SnackBar được thiết kế lại
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.white),
+            SizedBox(width: 10),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: Colors.blueAccent,
+        duration: Duration(seconds: 2),
+        margin: EdgeInsets.all(16),
+        elevation: 4,
+      ),
+    );
+  }
+
   void _filterPosts() {
     final postProvider = Provider.of<PostProvider>(context, listen: false);
-    // Gọi notifyListeners để cập nhật UI khi tab thay đổi
     postProvider.notifyListeners();
   }
 
   void _navigateToCreatePost() async {
-    // Sử dụng await để đợi khi người dùng quay lại từ màn hình tạo bài viết
     final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const CreatePostPage()),
     );
 
-    // Nếu có kết quả trả về và là true, thì cập nhật lại danh sách bài viết
     if (result == true) {
       _loadData();
     }
   }
 
   void _navigateToPostDetail(PostModel post) async {
-    // Sử dụng await để đợi khi người dùng quay lại từ màn hình chi tiết bài viết
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => ForumDetailPage(post: post)),
+      MaterialPageRoute(
+        builder: (context) => ForumDetailPage(post: post),
+      ),
     );
-
-    // Khi quay lại từ màn hình chi tiết, giao diện sẽ tự động cập nhật
-    // vì đã sử dụng Consumer với PostProvider
   }
 
   void _navigateToNotifications() {
@@ -165,162 +204,459 @@ class _CommunityForumPageState extends State<CommunityForumPage>
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final pix = size.width / 375;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      body: Stack(
-        children: [
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: TopBar(title: 'Diễn đàn'),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              isDarkMode ? Color(0xFF1A1A2E) : Color(0xFF4B6CB7),
+              isDarkMode ? Color(0xFF16213E) : Color(0xFF182848),
+            ],
           ),
-          Positioned(
-              top: 40 * pix,
-              right: 16 * pix,
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.search,
-                        color: Color.fromARGB(255, 255, 255, 255), size: 28),
-                    onPressed: _navigateToSearch,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.notifications,
-                        color: Color.fromARGB(255, 255, 255, 255), size: 28),
-                    onPressed: _navigateToNotifications,
-                  ),
-                ],
-              )),
-          Positioned(
-            top: 100 * pix,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child:
-                Consumer<PostProvider>(builder: (context, postProvider, child) {
-              if (_isLoading || postProvider.isLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom App Bar
+              _buildAppBar(pix, isDarkMode),
 
-              // Lọc bài viết dựa trên bộ lọc đã chọn
-              List<PostModel> filteredPosts = postProvider.posts;
-              if (_selectedFilter != 'Tất cả') {
-                filteredPosts = postProvider.posts
-                    .where(
-                        (post) => post.tags?.contains(_selectedFilter) ?? false)
-                    .toList();
-              }
-
-              // Sắp xếp bài viết dựa trên tab đang chọn
-              if (_tabController.index == 1) {
-                // Tab "Phổ biến" - sắp xếp theo số lượt thích
-                filteredPosts.sort((a, b) =>
-                    (b.likes?.length ?? 0).compareTo(a.likes?.length ?? 0));
-              } else if (_tabController.index == 0) {
-                // Tab "Mới nhất" - sắp xếp theo thời gian tạo
-                filteredPosts.sort((a, b) => (b.createdAt ?? DateTime(1970))
-                    .compareTo(a.createdAt ?? DateTime(1970)));
-              }
-              // Tab "Đang theo dõi" có thể được thêm logic ở đây
-
-              return NestedScrollView(
-                headerSliverBuilder: (context, innerBoxIsScrolled) {
-                  return [
-                    SliverToBoxAdapter(
-                      child: Column(
-                        children: [
-                          // TabBar
-                          Container(
-                            color: Colors.white,
-                            child: TabBar(
-                              controller: _tabController,
-                              labelColor: Theme.of(context).primaryColor,
-                              unselectedLabelColor: Colors.grey,
-                              indicatorColor: Theme.of(context).primaryColor,
-                              tabs: const [
-                                Tab(text: 'Mới nhất'),
-                                Tab(text: 'Phổ biến'),
-                                Tab(text: 'Đang theo dõi'),
-                              ],
-                            ),
-                          ),
-
-                          // Filter Chips
-                          Container(
-                            height: 60,
-                            color: Colors.grey[50],
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 8),
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: _filters.length,
-                              itemBuilder: (context, index) {
-                                final filter = _filters[index];
-                                return Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 4),
-                                  child: ChoiceChip(
-                                    label: Text(filter),
-                                    selected: _selectedFilter == filter,
-                                    onSelected: (selected) {
-                                      if (selected) {
-                                        setState(() {
-                                          _selectedFilter = filter;
-                                        });
-                                      }
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
+              // Main Content
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                      color: isDarkMode ? Colors.black : Colors.white,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(25),
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: Offset(0, -2),
+                        )
+                      ]),
+                  child: ClipRRect(
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(25)),
+                    child: Consumer<PostProvider>(
+                      builder: (context, postProvider, child) {
+                        if (_isLoading || postProvider.isLoading) {
+                          return _buildSkeletonLoading(pix);
+                        }
+
+                        // Lọc bài viết dựa trên bộ lọc đã chọn
+                        List<PostModel> filteredPosts = postProvider.posts;
+                        if (_selectedFilter != 'Tất cả') {
+                          filteredPosts = postProvider.posts
+                              .where((post) =>
+                                  post.tags?.contains(_selectedFilter) ?? false)
+                              .toList();
+                        }
+
+                        // Sắp xếp bài viết dựa trên tab đang chọn
+                        if (_tabController.index == 1) {
+                          // Tab "Phổ biến" - sắp xếp theo số lượt thích
+                          filteredPosts.sort((a, b) => (b.likes?.length ?? 0)
+                              .compareTo(a.likes?.length ?? 0));
+                        } else if (_tabController.index == 0) {
+                          // Tab "Mới nhất" - sắp xếp theo thời gian tạo
+                          filteredPosts.sort((a, b) =>
+                              (b.createdAt ?? DateTime(1970))
+                                  .compareTo(a.createdAt ?? DateTime(1970)));
+                        }
+
+                        return Column(
+                          children: [
+                            // TabBar
+                            Container(
+                              decoration: BoxDecoration(
+                                  color: isDarkMode
+                                      ? Colors.grey[900]
+                                      : Colors.white,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.05),
+                                      blurRadius: 5,
+                                      offset: Offset(0, 2),
+                                    )
+                                  ]),
+                              child: TabBar(
+                                controller: _tabController,
+                                labelColor: isDarkMode
+                                    ? Colors.white
+                                    : Theme.of(context).primaryColor,
+                                unselectedLabelColor: isDarkMode
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
+                                indicatorColor: Theme.of(context).primaryColor,
+                                indicatorWeight: 3,
+                                labelStyle: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  fontFamily: 'BeVietnamPro',
+                                ),
+                                unselectedLabelStyle: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 15,
+                                  fontFamily: 'BeVietnamPro',
+                                ),
+                                tabs: const [
+                                  Tab(
+                                    icon: Icon(Icons.access_time),
+                                    text: 'Mới nhất',
+                                  ),
+                                  Tab(
+                                    icon: Icon(Icons.local_fire_department),
+                                    text: 'Phổ biến',
+                                  ),
+                                  Tab(
+                                    icon: Icon(Icons.bookmark),
+                                    text: 'Đang theo dõi',
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Filter Chips
+                            _buildFilterChips(pix, isDarkMode),
+
+                            // Post List
+                            Expanded(
+                              child: TabBarView(
+                                controller: _tabController,
+                                children: [
+                                  // Tab Mới nhất
+                                  _buildPostList(
+                                      filteredPosts, pix, isDarkMode),
+
+                                  // Tab Phổ biến
+                                  _buildPostList(
+                                      filteredPosts, pix, isDarkMode),
+
+                                  // Tab Đang theo dõi
+                                  _buildPostList(
+                                      filteredPosts, pix, isDarkMode),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
-                  ];
-                },
-                body: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    // Tab Mới nhất
-                    _buildPostList(filteredPosts),
-
-                    // Tab Phổ biến
-                    _buildPostList(filteredPosts),
-
-                    // Tab Đang theo dõi
-                    _buildPostList(filteredPosts),
-                  ],
+                  ),
                 ),
-              );
-            }),
+              ),
+            ],
+          ),
+        ),
+      ),
+      floatingActionButton: _buildFloatingActionButton(),
+    );
+  }
+
+  // App Bar hiện đại
+  Widget _buildAppBar(double pix, bool isDarkMode) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          Text(
+            'Cộng đồng học tập',
+            style: TextStyle(
+              fontSize: 20 * pix,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              fontFamily: 'BeVietnamPro',
+            ),
+          ),
+          Spacer(),
+          IconButton(
+            icon: Icon(Icons.search, color: Colors.white, size: 26),
+            onPressed: _navigateToSearch,
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.white.withOpacity(0.2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          SizedBox(width: 8),
+          IconButton(
+            icon: Icon(Icons.notifications, color: Colors.white, size: 26),
+            onPressed: _navigateToNotifications,
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.white.withOpacity(0.2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _navigateToCreatePost,
-        child: const Icon(Icons.add),
-        backgroundColor: Theme.of(context).primaryColor,
       ),
     );
   }
 
-  Widget _buildPostList(List<PostModel> posts) {
-    return RefreshIndicator(
-      onRefresh: _loadData,
-      child: posts.isEmpty
-          ? const Center(child: Text('Không có bài viết nào phù hợp'))
-          : ListView.builder(
-              padding: const EdgeInsets.all(8),
-              itemCount: posts.length,
+  // Hiệu ứng skeleton loading
+  Widget _buildSkeletonLoading(double pix) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Column(
+        children: [
+          // Tab skeleton
+          Container(
+            height: 50,
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: List.generate(
+                  3,
+                  (index) => Container(
+                        width: 100,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.white,
+                        ),
+                      )),
+            ),
+          ),
+
+          // Filter skeleton
+          Container(
+            height: 60,
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: 5,
               itemBuilder: (context, index) {
-                final post = posts[index];
-                return ForumPostCard(
-                  post: post,
-                  onTap: () => _navigateToPostDetail(post),
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Container(
+                    width: 80,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: Colors.white,
+                    ),
+                  ),
                 );
               },
             ),
+          ),
+
+          // Posts skeleton
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: 5,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Container(
+                    height: 220,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      color: Colors.white,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Floating Action Button được cải tiến
+  Widget _buildFloatingActionButton() {
+    return FloatingActionButton.extended(
+      onPressed: _navigateToCreatePost,
+      icon: Icon(Icons.add, size: 22),
+      label: Text(
+        'Tạo bài viết',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontFamily: 'BeVietnamPro',
+        ),
+      ),
+      elevation: 4,
+      backgroundColor: Color(0xFF4B6CB7),
+    );
+  }
+
+  // Filters được thiết kế lại với gradient và icons
+  Widget _buildFilterChips(double pix, bool isDarkMode) {
+    return Container(
+      height: 70,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.grey[900] : Colors.grey[50],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 2,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: _filters.length,
+        itemBuilder: (context, index) {
+          final filter = _filters[index];
+          final isSelected = _selectedFilter == filter;
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedFilter = filter;
+                });
+                // Thêm hiệu ứng haptic feedback
+                HapticFeedback.lightImpact();
+              },
+              child: AnimatedContainer(
+                duration: Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: isSelected
+                      ? LinearGradient(
+                          colors: _filterGradients[index],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                  color: isSelected
+                      ? null
+                      : isDarkMode
+                          ? Colors.grey[800]
+                          : Colors.grey[200],
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: _filterGradients[index][0].withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: Offset(0, 3),
+                          )
+                        ]
+                      : null,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _filterIcons[index],
+                      size: 16,
+                      color: isSelected
+                          ? Colors.white
+                          : isDarkMode
+                              ? Colors.white70
+                              : Colors.grey[800],
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      filter,
+                      style: TextStyle(
+                        color: isSelected
+                            ? Colors.white
+                            : isDarkMode
+                                ? Colors.white70
+                                : Colors.grey[800],
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontSize: 13,
+                        fontFamily: 'BeVietnamPro',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Danh sách bài viết được cải tiến
+  Widget _buildPostList(List<PostModel> posts, double pix, bool isDarkMode) {
+    if (posts.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Sử dụng animation Lottie cho trạng thái trống
+            Lottie.network(
+              'https://assets1.lottiefiles.com/packages/lf20_KU3FGB.json',
+              width: 200,
+              height: 200,
+              repeat: true,
+            ),
+            SizedBox(height: 20),
+            Text(
+              'Chưa có bài viết nào',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'BeVietnamPro',
+                color: isDarkMode ? Colors.white70 : Colors.grey[800],
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Hãy là người đầu tiên chia sẻ kiến thức',
+              style: TextStyle(
+                fontSize: 14,
+                color: isDarkMode ? Colors.white60 : Colors.grey[600],
+                fontFamily: 'BeVietnamPro',
+              ),
+            ),
+            SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _navigateToCreatePost,
+              icon: Icon(Icons.add),
+              label: Text('Tạo bài viết đầu tiên'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF4B6CB7),
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: Colors.blue,
+      backgroundColor: isDarkMode ? Colors.grey[800] : Colors.white,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: posts.length,
+        itemBuilder: (context, index) {
+          final post = posts[index];
+          // Sử dụng Hero widget để tạo animation chuyển màn hình
+          return Hero(
+            tag: 'post_${post.id}',
+            child: ForumPostCard(
+              post: post,
+              onTap: () => _navigateToPostDetail(post),
+            ),
+          );
+        },
+      ),
     );
   }
 }

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:language_app/models/user_session_model.dart';
+import 'package:language_app/provider/user_session_provider.dart';
 import 'package:language_app/widget/top_bar.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ActivityScreen extends StatefulWidget {
@@ -12,20 +15,20 @@ class ActivityScreen extends StatefulWidget {
 
 class _ActivityScreenState extends State<ActivityScreen> {
   String _selectedTimeFilter = 'Ngày';
-  // Dữ liệu mẫu (có thể thay bằng dữ liệu thực tế)
-  Map<String, List<double>> studyTimeData = {
-    'Ngày': [2.5, 1.8, 3.0, 2.0, 1.5, 2.8, 2.2], // 7 ngày (giờ)
-    'Tuần': [12.5, 10.8, 14.0, 11.5], // 4 tuần (giờ)
-    'Tháng': [50.0, 45.5, 55.0], // 3 tháng (giờ)
-  };
-  int totalCourses = 5; // Số khóa học mẫu
-  int streakDays = 7; // Số ngày học liên tục
-  int totalWords = 320; // Số từ vựng đã học
+  final Color _primaryColor = const Color(0xFF5B7BFE);
+  final Color _secondaryColor = const Color(0xFF20C3AF);
+  final Color _backgroundColor = const Color(0xFFF8FAFF);
+  bool _isRefreshing = false;
 
   @override
   void initState() {
     super.initState();
     _loadTimeFilter();
+
+    // Tải dữ liệu từ API
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshData();
+    });
   }
 
   Future<void> _loadTimeFilter() async {
@@ -44,9 +47,29 @@ class _ActivityScreenState extends State<ActivityScreen> {
     });
   }
 
+  Future<void> _refreshData() async {
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    try {
+      await Provider.of<UserSessionProvider>(context, listen: false)
+          .getOverview();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không thể tải dữ liệu: ${e.toString()}')),
+      );
+    } finally {
+      setState(() {
+        _isRefreshing = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final pix = MediaQuery.of(context).size.width / 375;
+    final size = MediaQuery.of(context).size;
+    final pix = (size.width / 375).clamp(0.8, 1.2);
 
     return Scaffold(
       body: Container(
@@ -62,7 +85,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
         ),
         child: Stack(
           children: [
-            // Top bar với hiệu ứng nổi
+            // Top bar
             Positioned(
               top: 0,
               right: 0,
@@ -83,45 +106,59 @@ class _ActivityScreenState extends State<ActivityScreen> {
                 ),
               ),
             ),
-            // Nội dung chính
+            // Main content
             Positioned(
               top: 100 * pix,
               left: 0,
               right: 0,
               bottom: 0,
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Padding(
-                  padding: EdgeInsets.all(16 * pix),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header với animation
-                      _buildAnimatedHeader(pix),
+              child: Consumer<UserSessionProvider>(
+                  builder: (context, sessionProvider, child) {
+                // Kiểm tra trạng thái loading
+                if (sessionProvider.isLoading || _isRefreshing) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                      SizedBox(height: 24 * pix),
+                // Lấy dữ liệu từ provider
+                final streakDays =
+                    sessionProvider.loginStreak?.currentStreak ?? 0;
+                final totalStudyTime = sessionProvider.totalStudyTime;
 
-                      // Streak và thống kê
-                      _buildStreakCard(pix),
+                return RefreshIndicator(
+                  onRefresh: _refreshData,
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(16 * pix),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Header
+                          _buildAnimatedHeader(pix),
+                          SizedBox(height: 24 * pix),
 
-                      SizedBox(height: 24 * pix),
+                          // Streak
+                          _buildStreakCard(pix, streakDays),
+                          SizedBox(height: 24 * pix),
 
-                      // Thời gian học tập
-                      _buildLearningTimeSection(pix),
+                          // Learning time
+                          _buildLearningTimeSection(pix, sessionProvider),
+                          SizedBox(height: 24 * pix),
 
-                      SizedBox(height: 24 * pix),
+                          // Stats
+                          _buildStatCardsRow(pix, totalStudyTime),
+                          SizedBox(height: 24 * pix),
 
-                      // Thẻ thống kê
-                      _buildStatCardsRow(pix),
-
-                      SizedBox(height: 24 * pix),
-
-                      // Tiến độ học tập
-                      _buildLearningProgress(pix),
-                    ],
+                          // Learning progress
+                          _buildLearningProgress(pix),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                );
+              }),
             ),
           ],
         ),
@@ -187,7 +224,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
   }
 
   // Thẻ streak
-  Widget _buildStreakCard(double pix) {
+  Widget _buildStreakCard(double pix, int streakDays) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(16 * pix),
@@ -269,7 +306,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List.generate(
               7,
-              (index) => _buildDayIndicator(index, pix),
+              (index) => _buildDayIndicator(index, pix, streakDays),
             ),
           ),
         ],
@@ -278,7 +315,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
   }
 
   // Thẻ thể hiện các ngày trong streak
-  Widget _buildDayIndicator(int index, double pix) {
+  Widget _buildDayIndicator(int index, double pix, int streakDays) {
     final bool isActive = index < streakDays % 7;
 
     return Column(
@@ -312,7 +349,24 @@ class _ActivityScreenState extends State<ActivityScreen> {
   }
 
   // Phần thống kê thời gian học tập
-  Widget _buildLearningTimeSection(double pix) {
+  Widget _buildLearningTimeSection(
+      double pix, UserSessionProvider sessionProvider) {
+    // Lấy dữ liệu tương ứng với filter
+    List<SessionStatisticItem> data;
+    switch (_selectedTimeFilter) {
+      case 'Ngày':
+        data = sessionProvider.dailyData;
+        break;
+      case 'Tuần':
+        data = sessionProvider.weeklyData;
+        break;
+      case 'Tháng':
+        data = sessionProvider.monthlyData;
+        break;
+      default:
+        data = sessionProvider.dailyData;
+    }
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(20 * pix),
@@ -385,74 +439,84 @@ class _ActivityScreenState extends State<ActivityScreen> {
           SizedBox(height: 20 * pix),
           SizedBox(
             height: 250 * pix,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: _getMaxY(),
-                barTouchData: BarTouchData(
-                  enabled: true,
-                  touchTooltipData: BarTouchTooltipData(
-                    tooltipPadding: EdgeInsets.all(8 * pix),
-                    tooltipMargin: 8 * pix,
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      final hours = rod.toY.floor();
-                      final minutes = ((rod.toY - hours) * 60).round();
-                      return BarTooltipItem(
-                        '$hours h $minutes m',
-                        TextStyle(
-                          color: Colors.white,
-                          fontSize: 12 * pix,
-                          fontFamily: 'BeVietnamPro',
-                          fontWeight: FontWeight.bold,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) =>
-                          _bottomTitles(value, pix),
-                      reservedSize: 30 * pix,
+            child: data.isEmpty
+                ? Center(
+                    child: Text(
+                      'Không có dữ liệu thời gian học tập',
+                      style: TextStyle(
+                        fontSize: 14 * pix,
+                        color: Colors.grey,
+                      ),
                     ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) => Text(
-                        '${value.toInt()}h',
-                        style: TextStyle(
-                          fontSize: 12 * pix,
-                          fontFamily: 'BeVietnamPro',
-                          color: Colors.grey,
+                  )
+                : BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceAround,
+                      maxY: _getMaxY(data),
+                      barTouchData: BarTouchData(
+                        enabled: true,
+                        touchTooltipData: BarTouchTooltipData(
+                          tooltipPadding: EdgeInsets.all(8 * pix),
+                          tooltipMargin: 8 * pix,
+                          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                            final hours = rod.toY.floor();
+                            final minutes = ((rod.toY - hours) * 60).round();
+                            return BarTooltipItem(
+                              '$hours h $minutes m',
+                              TextStyle(
+                                color: Colors.white,
+                                fontSize: 12 * pix,
+                                fontFamily: 'BeVietnamPro',
+                                fontWeight: FontWeight.bold,
+                              ),
+                            );
+                          },
                         ),
                       ),
-                      reservedSize: 40 * pix,
-                      interval: _getYInterval(),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) =>
+                                _bottomTitles(value, pix, data),
+                            reservedSize: 30 * pix,
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) => Text(
+                              '${value.toInt()}h',
+                              style: TextStyle(
+                                fontSize: 12 * pix,
+                                fontFamily: 'BeVietnamPro',
+                                color: Colors.grey,
+                              ),
+                            ),
+                            reservedSize: 40 * pix,
+                            interval: _getYInterval(data),
+                          ),
+                        ),
+                        topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                      ),
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        getDrawingHorizontalLine: (value) {
+                          return FlLine(
+                            color: Colors.grey.withOpacity(0.2),
+                            strokeWidth: 1,
+                          );
+                        },
+                      ),
+                      borderData: FlBorderData(show: false),
+                      barGroups: _buildBarGroups(pix, data),
                     ),
                   ),
-                  topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
-                ),
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  getDrawingHorizontalLine: (value) {
-                    return FlLine(
-                      color: Colors.grey.withOpacity(0.2),
-                      strokeWidth: 1,
-                    );
-                  },
-                ),
-                borderData: FlBorderData(show: false),
-                barGroups: _buildBarGroups(pix),
-              ),
-            ),
           ),
         ],
       ),
@@ -460,7 +524,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
   }
 
   // Các thẻ thống kê
-  Widget _buildStatCardsRow(double pix) {
+  Widget _buildStatCardsRow(double pix, double totalStudyTime) {
+    final hours = totalStudyTime.floor();
+    final minutes = ((totalStudyTime - hours) * 60).round();
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -468,7 +535,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
           pix: pix,
           icon: Icons.timer,
           label: "Tổng thời gian học",
-          value: _formatTotalStudyTime(),
+          value: "$hours h $minutes m",
           color: const Color(0xFF5B7BFE),
           gradientColors: [
             const Color(0xFF5B7BFE),
@@ -527,15 +594,20 @@ class _ActivityScreenState extends State<ActivityScreen> {
                       size: 16 * pix,
                     ),
                     SizedBox(width: 4 * pix),
-                    Text(
-                      "$totalWords từ vựng",
-                      style: TextStyle(
-                        fontSize: 12 * pix,
-                        fontFamily: 'BeVietnamPro',
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
-                      ),
-                    ),
+                    Consumer<UserSessionProvider>(
+                        builder: (context, provider, child) {
+                      // Placeholder data - in a real app, get this from API
+                      final totalWords = 320;
+                      return Text(
+                        "$totalWords từ vựng",
+                        style: TextStyle(
+                          fontSize: 12 * pix,
+                          fontFamily: 'BeVietnamPro',
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                      );
+                    }),
                   ],
                 ),
               ),
@@ -708,28 +780,15 @@ class _ActivityScreenState extends State<ActivityScreen> {
     );
   }
 
-  // Định dạng tổng thời gian học (giờ:phút)
-  String _formatTotalStudyTime() {
-    final totalHours = _calculateTotalTime();
-    final hours = totalHours.floor();
-    final minutes = ((totalHours - hours) * 60).round();
-    return '$hours h $minutes m';
-  }
-
-  // Tính tổng thời gian học
-  double _calculateTotalTime() {
-    return studyTimeData[_selectedTimeFilter]!.reduce((a, b) => a + b);
-  }
-
   // Tạo các cột biểu đồ
-  List<BarChartGroupData> _buildBarGroups(double pix) {
-    final data = studyTimeData[_selectedTimeFilter]!;
+  List<BarChartGroupData> _buildBarGroups(
+      double pix, List<SessionStatisticItem> data) {
     return List.generate(data.length, (index) {
       return BarChartGroupData(
         x: index,
         barRods: [
           BarChartRodData(
-            toY: data[index],
+            toY: data[index].totalTime,
             gradient: LinearGradient(
               colors: [
                 const Color(0xFF5B7BFE),
@@ -742,7 +801,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
             borderRadius: BorderRadius.circular(4 * pix),
             backDrawRodData: BackgroundBarChartRodData(
               show: true,
-              toY: _getMaxY(),
+              toY: _getMaxY(data),
               color: Colors.grey.withOpacity(0.1),
             ),
           ),
@@ -752,44 +811,15 @@ class _ActivityScreenState extends State<ActivityScreen> {
   }
 
   // Tạo tiêu đề trục X
-  Widget _bottomTitles(double value, double pix) {
+  Widget _bottomTitles(
+      double value, double pix, List<SessionStatisticItem> data) {
     final index = value.toInt();
-    final data = studyTimeData[_selectedTimeFilter]!;
     if (index >= data.length) return const SizedBox();
 
-    String title;
-    switch (_selectedTimeFilter) {
-      case 'Ngày':
-        final weekDays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-        title = weekDays[index % 7];
-        break;
-      case 'Tuần':
-        title = 'Tuần ${index + 1}';
-        break;
-      case 'Tháng':
-        final months = [
-          'T1',
-          'T2',
-          'T3',
-          'T4',
-          'T5',
-          'T6',
-          'T7',
-          'T8',
-          'T9',
-          'T10',
-          'T11',
-          'T12'
-        ];
-        title = months[index % 12];
-        break;
-      default:
-        title = '';
-    }
     return Padding(
       padding: EdgeInsets.only(top: 8 * pix),
       child: Text(
-        title,
+        data[index].dayOrMonth,
         style: TextStyle(
           fontSize: 12 * pix,
           fontFamily: 'BeVietnamPro',
@@ -801,14 +831,18 @@ class _ActivityScreenState extends State<ActivityScreen> {
   }
 
   // Tính giá trị tối đa trục Y
-  double _getMaxY() {
-    final data = studyTimeData[_selectedTimeFilter]!;
-    return (data.reduce((a, b) => a > b ? a : b) * 1.2).ceilToDouble();
+  double _getMaxY(List<SessionStatisticItem> data) {
+    if (data.isEmpty) return 10; // Giá trị mặc định nếu không có dữ liệu
+
+    double maxValue =
+        data.map((item) => item.totalTime).reduce((a, b) => a > b ? a : b);
+    return (maxValue * 1.2)
+        .ceilToDouble(); // Thêm 20% để có khoảng cách trên biểu đồ
   }
 
   // Tính khoảng cách trục Y
-  double _getYInterval() {
-    final maxY = _getMaxY();
+  double _getYInterval(List<SessionStatisticItem> data) {
+    final maxY = _getMaxY(data);
     return (maxY / 5).ceilToDouble();
   }
 }

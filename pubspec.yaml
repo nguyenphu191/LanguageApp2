@@ -39,6 +39,11 @@ dependencies:
   dio: ^5.8.0+1
   http_parser: ^4.1.2
   auto_size_text: ^3.0.0
+  shimmer: ^3.0.0
+  lottie: ^3.3.1
+  animations: ^2.0.11
+  dotted_border: ^2.1.0
+  photo_view: ^0.15.0
 
 dev_dependencies:
   flutter_test:

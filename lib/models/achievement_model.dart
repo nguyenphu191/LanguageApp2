@@ -1,37 +1,36 @@
-class Achievement {
+class AchievementModel {
   final int id;
   final String title;
   final String description;
-  final String? badgeImageUrl;
+  final String badgeImageUrl;
   final String triggerCondition;
   final int conditionValue;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final DateTime? unlockedAt;
   final bool isUnlocked;
 
-  Achievement({
+  AchievementModel({
     required this.id,
     required this.title,
     required this.description,
-    this.badgeImageUrl,
+    required this.badgeImageUrl,
     required this.triggerCondition,
     required this.conditionValue,
-    required this.createdAt,
-    required this.updatedAt,
+    this.unlockedAt,
     this.isUnlocked = false,
   });
 
-  factory Achievement.fromJson(Map<String, dynamic> json) {
-    return Achievement(
+  factory AchievementModel.fromJson(Map<String, dynamic> json) {
+    return AchievementModel(
       id: json['id'],
-      title: json['title'],
-      description: json['description'],
-      badgeImageUrl: json['badgeImageUrl'],
-      triggerCondition: json['triggerCondition'],
-      conditionValue: json['conditionValue'],
-      createdAt: DateTime.parse(json['createdAt']),
-      updatedAt: DateTime.parse(json['updatedAt']),
-      isUnlocked: false, // Không có dữ liệu user_achievements, giả lập là false
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      badgeImageUrl: json['badgeImageUrl'] ?? '',
+      triggerCondition: json['triggerCondition'] ?? '',
+      conditionValue: json['conditionValue'] ?? 0,
+      unlockedAt: json['unlockedAt'] != null
+          ? DateTime.parse(json['unlockedAt'])
+          : null,
+      isUnlocked: json['unlockedAt'] != null,
     );
   }
 }

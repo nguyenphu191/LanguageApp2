@@ -291,7 +291,7 @@ class _HomescreenState extends State<Homescreen>
                                                       Provider.of<AuthProvider>(
                                                           context,
                                                           listen: false);
-                                                  authProvider.logout();
+                                                  authProvider.logout(context);
                                                   Navigator.pop(context);
                                                   Navigator.pushReplacement(
                                                     context,

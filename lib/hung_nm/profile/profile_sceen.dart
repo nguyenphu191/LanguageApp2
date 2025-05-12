@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:language_app/models/user_model.dart';
 import 'package:language_app/models/achievement_model.dart';
+import 'package:language_app/provider/achievement_provider.dart';
 import 'activity.dart';
 import 'package:language_app/provider/user_provider.dart';
 import 'package:language_app/res/imagesLA/AppImages.dart';
@@ -39,11 +40,11 @@ class _ProfileScreenState extends State<ProfileScreen>
       curve: Curves.easeInOut,
     );
     _controller.forward();
-    // Lấy thông tin người dùng và thành tích
+
+    // Thêm đoạn này để tải thành tựu
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      userProvider.getUserInfo(context);
-      userProvider.fetchAchievements();
+      Provider.of<AchievementProvider>(context, listen: false)
+          .getAllAchievements();
     });
   }
 
@@ -524,18 +525,12 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildAchievementsSection(Size size, double pix) {
-    return Consumer<UserProvider>(
-      builder: (context, userProvider, child) {
-        if (userProvider.loading) {
-          return const Center(child: CircularProgressIndicator());
+    return Consumer<AchievementProvider>(
+      builder: (context, achievementProvider, child) {
+        if (achievementProvider.isLoading) {
+          return Center(child: CircularProgressIndicator());
         }
-        if (userProvider.error != null) {
-          return Center(child: Text('Lỗi: ${userProvider.error}'));
-        }
-        final achievements = userProvider.achievements;
-        if (achievements.isEmpty) {
-          return const Center(child: Text('Không có thành tích nào'));
-        }
+
         return Container(
           padding: EdgeInsets.all(16 * pix),
           decoration: BoxDecoration(
@@ -561,23 +556,37 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ),
               ),
               SizedBox(height: 15 * pix),
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 3,
-                childAspectRatio: 0.8,
-                mainAxisSpacing: 12 * pix,
-                crossAxisSpacing: 12 * pix,
-                children: achievements.map((achievement) {
-                  return _buildAchievementBadge(
-                    pix,
-                    achievement.title,
-                    achievement.description,
-                    achievement.badgeImageUrl ?? AppImages.coviet,
-                    achievement.isUnlocked,
-                  );
-                }).toList(),
-              ),
+              if (achievementProvider.achievements.isEmpty)
+                Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20 * pix),
+                    child: Text(
+                      'Bạn chưa có thành tựu nào. Hãy tiếp tục học tập để đạt được thành tựu!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14 * pix,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                )
+              else
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 3,
+                  childAspectRatio: 0.8,
+                  mainAxisSpacing: 12 * pix,
+                  crossAxisSpacing: 12 * pix,
+                  children: achievementProvider.achievements.map((achievement) {
+                    return _buildAchievementBadge(
+                        pix,
+                        achievement.title,
+                        achievement.description,
+                        achievement.badgeImageUrl,
+                        achievement.isUnlocked);
+                  }).toList(),
+                ),
             ],
           ),
         );
@@ -602,22 +611,21 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
           child: unlocked
               ? Center(
-                  child: imagePath.startsWith('http')
+                  child: imagePath.isNotEmpty
                       ? Image.network(
                           imagePath,
                           width: 40 * pix,
                           height: 40 * pix,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Image.asset(
-                            AppImages.coviet,
-                            width: 40 * pix,
-                            height: 40 * pix,
+                          errorBuilder: (context, error, stackTrace) => Icon(
+                            Icons.emoji_events,
+                            size: 30 * pix,
+                            color: _primaryColor,
                           ),
                         )
-                      : Image.asset(
-                          imagePath,
-                          width: 40 * pix,
-                          height: 40 * pix,
+                      : Icon(
+                          Icons.emoji_events,
+                          size: 30 * pix,
+                          color: _primaryColor,
                         ),
                 )
               : Center(

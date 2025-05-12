@@ -79,7 +79,7 @@ class AdminScreen extends StatelessWidget {
                     size: 20,
                   ),
                   onPressed: () {
-                    Provider.of<AuthProvider>(context, listen: false).logout();
+                    Provider.of<AuthProvider>(context, listen: false).logout(context);
                     Navigator.pop(context);
                   },
                 ),

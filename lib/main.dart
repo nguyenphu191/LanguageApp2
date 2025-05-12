@@ -12,18 +12,22 @@ import 'package:language_app/provider/theme_provider.dart';
 import 'package:language_app/provider/auth_provider.dart';
 import 'package:language_app/provider/topic_provider.dart';
 import 'package:language_app/provider/user_provider.dart';
+import 'package:language_app/provider/user_session_provider.dart';
 import 'package:language_app/provider/vocabulary_provider.dart';
 import 'package:language_app/provider/study_plans_provider.dart';
+import 'package:language_app/provider/achievement_provider.dart';
 import 'package:language_app/res/imagesLA/AppImages.dart';
 import 'package:language_app/service/local_notification_service.dart';
 import 'package:language_app/utils/baseurl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:shared_preferences/shared_preferences.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 final localNotificationService = LocalNotificationService();
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -96,6 +100,8 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => PostProvider()),
         ChangeNotifierProvider(create: (_) => StudyPlansProvider()),
+        ChangeNotifierProvider(create: (_) => UserSessionProvider()),
+        ChangeNotifierProvider(create: (_) => AchievementProvider()),
         ChangeNotifierProxyProvider<AuthProvider, ExamProvider>(
           create: (context) => ExamProvider(
             baseUrl: UrlUtils.getBaseUrl(),
@@ -113,8 +119,112 @@ Future<void> main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    // Add app lifecycle observer
+    WidgetsBinding.instance.addObserver(this);
+
+    // Check user session on app start
+    _checkUserSession();
+  }
+
+  @override
+  void dispose() {
+    // Remove app lifecycle observer
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    // Handle app lifecycle state changes
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      // App going to background
+      _handleAppBackground();
+    } else if (state == AppLifecycleState.resumed) {
+      // App coming to foreground
+      _handleAppForeground();
+    }
+  }
+
+  // Check if user is logged in and has an active session
+  Future<void> _checkUserSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token != null) {
+      // User is logged in, check for active session
+      try {
+        final userSessionProvider =
+            Provider.of<UserSessionProvider>(context, listen: false);
+        await userSessionProvider.checkAndManageSession();
+      } catch (e) {
+        debugPrint('Error checking user session: $e');
+      }
+    }
+  }
+
+  // Handle app going to background
+  Future<void> _handleAppBackground() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token != null) {
+      // User is logged in, save current timestamp
+      await prefs.setString(
+          'background_time', DateTime.now().toIso8601String());
+    }
+  }
+
+  // Handle app coming to foreground
+  Future<void> _handleAppForeground() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token != null) {
+      final backgroundTimeStr = prefs.getString('background_time');
+
+      if (backgroundTimeStr != null) {
+        // Calculate how long the app was in background
+        final backgroundTime = DateTime.parse(backgroundTimeStr);
+        final now = DateTime.now();
+        final difference = now.difference(backgroundTime);
+
+        // If app was in background for more than 30 minutes, close current session and create new one
+        if (difference.inMinutes > 30) {
+          try {
+            final userSessionProvider =
+                Provider.of<UserSessionProvider>(context, listen: false);
+            final currentSessionId = prefs.getInt('current_session_id');
+
+            if (currentSessionId != null) {
+              // End previous session
+              await userSessionProvider.updateLogoutTime(currentSessionId);
+              // Start new session
+              await userSessionProvider.createSession();
+            }
+          } catch (e) {
+            debugPrint('Error managing sessions: $e');
+          }
+        }
+
+        // Clear background time
+        await prefs.remove('background_time');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -123,13 +233,14 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Language App',
+          navigatorKey: navigatorKey,
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
             useMaterial3: true,
           ),
           darkTheme: ThemeData.dark(),
           themeMode: themeProvider.themeMode,
-          home: const CustomSplashScreen(), // Thay bằng CustomSplashScreen
+          home: const CustomSplashScreen(),
         );
       },
     );
@@ -185,11 +296,38 @@ class _CustomSplashScreenState extends State<CustomSplashScreen>
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
         // Check if the widget is still in the tree
+        _checkLoginAndRedirect();
+      }
+    });
+  }
+
+  void _checkLoginAndRedirect() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token != null) {
+      // User is logged in, check if their session is valid
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final isValid = await authProvider.checkAuthStatus();
+
+      if (isValid) {
+        // Valid session, navigate to home page
+        // Note: Replace with your actual home page route
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const Loginscreen()),
+        );
+      } else {
+        // Invalid session, navigate to login
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const Loginscreen()),
         );
       }
-    });
+    } else {
+      // No token, navigate to login
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const Loginscreen()),
+      );
+    }
   }
 
   @override

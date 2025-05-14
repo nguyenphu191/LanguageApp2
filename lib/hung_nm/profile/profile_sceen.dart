@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:language_app/models/user_model.dart';
 import 'package:language_app/models/achievement_model.dart';
 import 'package:language_app/provider/achievement_provider.dart';
+import 'package:language_app/provider/post_provider.dart';
+import 'package:language_app/models/post_model.dart';
 import 'activity.dart';
 import 'package:language_app/provider/user_provider.dart';
 import 'package:language_app/res/imagesLA/AppImages.dart';
@@ -12,6 +14,7 @@ import 'friends_list_screen.dart';
 import 'package:provider/provider.dart';
 import 'qr_scanner_screen.dart';
 import 'share_optiones.dart';
+import 'package:language_app/hung_nm/community/forum_detail_page.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -41,10 +44,13 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
     _controller.forward();
 
-    // Thêm đoạn này để tải thành tựu
+    // Thêm đoạn này để tải thành tựu và bài viết cá nhân
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<AchievementProvider>(context, listen: false)
           .getAllAchievements();
+
+      // Tải bài viết cá nhân
+      Provider.of<PostProvider>(context, listen: false).fetchMyPosts();
     });
   }
 
@@ -85,6 +91,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                         SizedBox(height: 25 * pix),
                         _buildAchievementsSection(size, pix),
                         SizedBox(height: 20 * pix),
+                        _buildMyPostsSection(size, pix),
                       ],
                     ),
                   ),
@@ -662,5 +669,235 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
       ],
     );
+  }
+
+  // Phần hiển thị bài viết cá nhân
+  Widget _buildMyPostsSection(Size size, double pix) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15 * pix),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.all(15 * pix),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Bài viết của tôi',
+                  style: TextStyle(
+                    fontSize: 18 * pix,
+                    fontWeight: FontWeight.bold,
+                    color: _primaryColor,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    // Tải lại bài viết cá nhân
+                    Provider.of<PostProvider>(context, listen: false)
+                        .fetchMyPosts();
+                  },
+                  child: Text(
+                    'Làm mới',
+                    style: TextStyle(
+                      fontSize: 14 * pix,
+                      color: _secondaryColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Consumer<PostProvider>(
+            builder: (context, postProvider, child) {
+              if (postProvider.isLoading) {
+                return Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20 * pix),
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                    ),
+                  ),
+                );
+              }
+
+              if (postProvider.posts.isEmpty) {
+                return Padding(
+                  padding: EdgeInsets.all(20 * pix),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.article_outlined,
+                          size: 50 * pix,
+                          color: Colors.grey[400],
+                        ),
+                        SizedBox(height: 10 * pix),
+                        Text(
+                          'Bạn chưa có bài viết nào',
+                          style: TextStyle(
+                            fontSize: 16 * pix,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        SizedBox(height: 5 * pix),
+                        Text(
+                          'Hãy chia sẻ kiến thức với cộng đồng',
+                          style: TextStyle(
+                            fontSize: 14 * pix,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              // Tôi đa 10 bài
+              final displayedPosts = postProvider.posts.take(10).toList();
+
+              return ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: displayedPosts.length,
+                separatorBuilder: (context, index) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final post = displayedPosts[index];
+                  return InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ForumDetailPage(post: post),
+                        ),
+                      ).then((_) {
+                        // Tải lại bài viết sau khi quay lại
+                        Provider.of<PostProvider>(context, listen: false)
+                            .fetchMyPosts();
+                      });
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.all(15 * pix),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            post.title ?? 'Không có tiêu đề',
+                            style: TextStyle(
+                              fontSize: 16 * pix,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 5 * pix),
+                          Text(
+                            post.content ?? '',
+                            style: TextStyle(
+                              fontSize: 14 * pix,
+                              color: Colors.grey[600],
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 10 * pix),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.favorite,
+                                color: Colors.red[400],
+                                size: 16 * pix,
+                              ),
+                              SizedBox(width: 5 * pix),
+                              Text(
+                                '${post.likes?.length ?? 0}',
+                                style: TextStyle(
+                                  fontSize: 12 * pix,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              SizedBox(width: 15 * pix),
+                              Icon(
+                                Icons.comment,
+                                color: Colors.blue[400],
+                                size: 16 * pix,
+                              ),
+                              SizedBox(width: 5 * pix),
+                              Text(
+                                '${post.comments?.length ?? 0}',
+                                style: TextStyle(
+                                  fontSize: 12 * pix,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              Spacer(),
+                              Text(
+                                '${_formatDate(post.createdAt)}',
+                                style: TextStyle(
+                                  fontSize: 12 * pix,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+          if (Provider.of<PostProvider>(context).posts.length > 3)
+            Padding(
+              padding: EdgeInsets.all(15 * pix),
+              child: Center(
+                child: Text(
+                  'Đang hiển thị ${Provider.of<PostProvider>(context).posts.length > 10 ? 10 : Provider.of<PostProvider>(context).posts.length} bài viết mới nhất',
+                  style: TextStyle(
+                    fontSize: 14 * pix,
+                    color: Colors.grey[500],
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Hàm định dạng thời gian
+  String _formatDate(DateTime? date) {
+    if (date == null) return '';
+
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays > 30) {
+      return '${date.day}/${date.month}/${date.year}';
+    } else if (difference.inDays > 0) {
+      return '${difference.inDays} ngày trước';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} giờ trước';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} phút trước';
+    } else {
+      return 'Vừa xong';
+    }
   }
 }

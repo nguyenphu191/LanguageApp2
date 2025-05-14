@@ -21,6 +21,7 @@ class _NotificationsscreenState extends State<Notificationsscreen>
     super.initState();
     _scrollController = ScrollController();
 
+    // lấy noti về
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshNotifications();
     });
@@ -41,6 +42,7 @@ class _NotificationsscreenState extends State<Notificationsscreen>
     }
   }
 
+  // xem chi tiết
   Future<void> _seeDetail(NotificationModel noti) async {
     if (!noti.isRead) {
       final notificationProvider =

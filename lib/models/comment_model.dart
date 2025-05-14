@@ -1,56 +1,92 @@
 class CommentModel {
-  String? id;
-  String? userId;
-  String? userName;
-  String? userAvatar;
-  String? postId;
-  String? content;
-  DateTime? createdAt;
-  DateTime? updatedAt;
+  final int id;
+  final int postId;
+  final int userId;
+  final String content;
+  final String createdAt;
+  final String updatedAt;
+  final String? userDisplayName;
+  final String? userAvatar;
+  final List<CommentModel> replies;
 
   CommentModel({
-    this.id,
-    this.userId,
-    this.postId,
-    this.userName,
+    required this.id,
+    required this.postId,
+    required this.userId,
+    required this.content,
+    required this.createdAt,
+    required this.updatedAt,
+    this.userDisplayName,
     this.userAvatar,
-    this.content,
-    this.createdAt,
-    this.updatedAt,
+    this.replies = const [],
   });
 
-  CommentModel.fromJson(Map<String, dynamic> json) {
-    id = json['id'].toString();
-    userId = json['userId'].toString();
-    postId = json['postId'].toString();
+  factory CommentModel.fromJson(Map<String, dynamic> json) {
+    final userMap = json['user'] as Map<String, dynamic>?;
 
-    // Xử lý dữ liệu người dùng đúng cách
-    if (json['user'] != null) {
-      userName = "${json['user']['firstName']} ${json['user']['lastName']}";
-      userAvatar = json['user']['profileImageUrl'];
-    } else {
-      userName = "";
-      userAvatar = "";
+    // Xử lý tên hiển thị người dùng
+    String? displayName;
+    if (userMap != null) {
+      // Kiểm tra các trường hợp khác nhau của tên người dùng
+      if (userMap.containsKey('displayName') &&
+          userMap['displayName'] != null) {
+        displayName = userMap['displayName'];
+      } else if (userMap.containsKey('firstName') ||
+          userMap.containsKey('lastName')) {
+        String firstName = userMap['firstName'] ?? '';
+        String lastName = userMap['lastName'] ?? '';
+        displayName = '$firstName $lastName'.trim();
+      } else if (userMap.containsKey('name')) {
+        displayName = userMap['name'];
+      } else if (userMap.containsKey('username')) {
+        displayName = userMap['username'];
+      }
     }
 
-    content = json['content'] ?? "";
+    // Xử lý avatar của người dùng
+    String? avatarUrl;
+    if (userMap != null) {
+      // Kiểm tra các trường hợp khác nhau của avatar
+      if (userMap.containsKey('avatar') && userMap['avatar'] != null) {
+        avatarUrl = userMap['avatar'];
+      } else if (userMap.containsKey('profileImageUrl')) {
+        avatarUrl = userMap['profileImageUrl'];
+      } else if (userMap.containsKey('profileImage')) {
+        avatarUrl = userMap['profileImage'];
+      } else if (userMap.containsKey('imageUrl')) {
+        avatarUrl = userMap['imageUrl'];
+      }
+    }
 
-    // Xử lý ngày tháng
-    createdAt =
-        json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null;
-    updatedAt =
-        json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null;
+    return CommentModel(
+      id: json['id'],
+      postId: json['postId'],
+      userId: json['userId'],
+      content: json['content'],
+      createdAt: json['createdAt'],
+      updatedAt: json['updatedAt'],
+      userDisplayName: displayName,
+      userAvatar: avatarUrl,
+      replies: json['replies'] != null
+          ? List<CommentModel>.from(
+              json['replies'].map((x) => CommentModel.fromJson(x)))
+          : [],
+    );
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = <String, dynamic>{};
-    data['id'] = id;
-    data['userId'] = userId;
-    data['postId'] = postId;
-    data['content'] = content;
-    data['createdAt'] = createdAt?.toIso8601String();
-    data['updatedAt'] = updatedAt?.toIso8601String();
-
-    return data;
+    return {
+      'id': id,
+      'postId': postId,
+      'userId': userId,
+      'content': content,
+      'createdAt': createdAt,
+      'updatedAt': updatedAt,
+      'user': {
+        'displayName': userDisplayName,
+        'avatar': userAvatar,
+      },
+      'replies': replies.map((reply) => reply.toJson()).toList(),
+    };
   }
 }

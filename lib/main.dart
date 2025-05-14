@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:language_app/phu_nv/LoginSignup/login_screen.dart';
+import 'package:language_app/provider/comment_provider.dart';
 import 'package:language_app/provider/exam_provider.dart';
 import 'package:language_app/provider/exercise_provider.dart';
 import 'package:language_app/provider/language_provider.dart';
+import 'package:language_app/provider/like_provider.dart';
 import 'package:language_app/provider/notification_provider.dart';
 import 'package:language_app/provider/post_provider.dart';
 import 'package:language_app/provider/progress_provider.dart';
 import 'package:language_app/provider/question_provider.dart';
+import 'package:language_app/provider/report_provider.dart';
 import 'package:language_app/provider/theme_provider.dart';
 import 'package:language_app/provider/auth_provider.dart';
 import 'package:language_app/provider/topic_provider.dart';
@@ -34,14 +37,17 @@ Future<void> main() async {
 
   // Set ErrorWidget.builder outside of the widget tree
   ErrorWidget.builder = (FlutterErrorDetails details) {
-    return Material(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-            'Đã xảy ra lỗi. Vui lòng khởi động lại ứng dụng.',
-            style: const TextStyle(color: Colors.red, fontSize: 16),
-            textAlign: TextAlign.center,
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Material(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              'Đã xảy ra lỗi. Vui lòng khởi động lại ứng dụng.',
+              style: const TextStyle(color: Colors.red, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
       ),
@@ -72,8 +78,9 @@ Future<void> main() async {
         priority: Priority.high,
       );
 
-      const NotificationDetails notificationDetails =
-          NotificationDetails(android: androidDetails);
+      const NotificationDetails notificationDetails = NotificationDetails(
+        android: androidDetails,
+      );
 
       await flutterLocalNotificationsPlugin.show(
         0,
@@ -99,6 +106,9 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ProgressProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => PostProvider()),
+        ChangeNotifierProvider(create: (_) => CommentProvider()),
+        ChangeNotifierProvider(create: (_) => LikeProvider()),
+        ChangeNotifierProvider(create: (_) => ReportProvider()),
         ChangeNotifierProvider(create: (_) => StudyPlansProvider()),
         ChangeNotifierProvider(create: (_) => UserSessionProvider()),
         ChangeNotifierProvider(create: (_) => AchievementProvider()),
@@ -167,8 +177,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (token != null) {
       // User is logged in, check for active session
       try {
-        final userSessionProvider =
-            Provider.of<UserSessionProvider>(context, listen: false);
+        final userSessionProvider = Provider.of<UserSessionProvider>(
+          context,
+          listen: false,
+        );
         await userSessionProvider.checkAndManageSession();
       } catch (e) {
         debugPrint('Error checking user session: $e');
@@ -184,7 +196,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (token != null) {
       // User is logged in, save current timestamp
       await prefs.setString(
-          'background_time', DateTime.now().toIso8601String());
+        'background_time',
+        DateTime.now().toIso8601String(),
+      );
     }
   }
 
@@ -205,8 +219,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         // If app was in background for more than 30 minutes, close current session and create new one
         if (difference.inMinutes > 30) {
           try {
-            final userSessionProvider =
-                Provider.of<UserSessionProvider>(context, listen: false);
+            final userSessionProvider = Provider.of<UserSessionProvider>(
+              context,
+              listen: false,
+            );
             final currentSessionId = prefs.getInt('current_session_id');
 
             if (currentSessionId != null) {
@@ -273,20 +289,14 @@ class _CustomSplashScreenState extends State<CustomSplashScreen>
 
     // Thiết lập các hiệu ứng
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeIn,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
 
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.25),
       end: Offset.zero,
     ).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeOutQuad,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutQuad),
     );
 
     // Bắt đầu animation
@@ -324,9 +334,9 @@ class _CustomSplashScreenState extends State<CustomSplashScreen>
       }
     } else {
       // No token, navigate to login
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const Loginscreen()),
-      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const Loginscreen()));
     }
   }
 
@@ -349,7 +359,9 @@ class _CustomSplashScreenState extends State<CustomSplashScreen>
         width: size.width,
         decoration: const BoxDecoration(
           image: DecorationImage(
-              image: AssetImage(AppImages.intro2), fit: BoxFit.cover),
+            image: AssetImage(AppImages.intro2),
+            fit: BoxFit.cover,
+          ),
         ),
         child: Center(
           child: Column(
@@ -399,10 +411,7 @@ class _CustomSplashScreenState extends State<CustomSplashScreen>
                 opacity: _fadeAnimation,
                 child: Text(
                   'Đang tải ứng dụng...',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16 * pix,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 16 * pix),
                 ),
               ),
               SizedBox(height: 30 * pix),

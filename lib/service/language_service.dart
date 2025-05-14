@@ -1,3 +1,98 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:language_app/models/language_model.dart';
+import 'package:language_app/utils/baseurl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class LanguageService {
+  final String baseUrl = "${UrlUtils.getBaseUrl()}languages/";
+
+  // Lấy token
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
+  }
+
+  // Tạo headers với token
+  Future<Map<String, String>> _getHeaders() async {
+    final token = await _getToken();
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': token != null ? 'Bearer $token' : '',
+    };
+  }
+
+  // Lấy danh sách ngôn ngữ
+  Future<List<LanguageModel>> getAllLanguages() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse(baseUrl),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return (data['data']['data'] as List)
+            .map((item) => LanguageModel.fromJson(item))
+            .toList();
+      } else {
+        debugPrint('Không thể lấy danh sách ngôn ngữ: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      debugPrint('Lỗi khi lấy danh sách ngôn ngữ: $e');
+      return [];
+    }
+  }
+
+  // Lấy thông tin ngôn ngữ theo mã
+  Future<LanguageModel?> getLanguageByCode(String code) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('${baseUrl}code/$code'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return LanguageModel.fromJson(data['data']);
+      } else {
+        debugPrint('Không thể lấy thông tin ngôn ngữ: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Lỗi khi lấy thông tin ngôn ngữ: $e');
+      return null;
+    }
+  }
+
+  // Lấy thông tin ngôn ngữ theo ID
+  Future<LanguageModel?> getLanguageById(String id) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl$id'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return LanguageModel.fromJson(data['data']);
+      } else {
+        debugPrint('Không thể lấy thông tin ngôn ngữ: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Lỗi khi lấy thông tin ngôn ngữ: $e');
+      return null;
+    }
+  }
+}
+
+// Dữ liệu ngôn ngữ cũ giữ lại để tránh lỗi với các phần khác của ứng dụng
 Map<String, String> languageData = {
   "@@locale": "vi",
   "settings": "Cài đặt",

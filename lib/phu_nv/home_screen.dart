@@ -56,6 +56,8 @@ class _HomescreenState extends State<Homescreen>
 
       final topicProvider = Provider.of<TopicProvider>(context, listen: false);
       topicProvider.fetchTopics(level: 1);
+
+      // lấy noti về
       final notiProvider =
           Provider.of<NotificationProvider>(context, listen: false);
       notiProvider.getNumberNewNotification();

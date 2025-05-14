@@ -33,6 +33,9 @@ class PostModel {
   });
 
   PostModel.fromJson(Map<String, dynamic> json) {
+    // Debug log để kiểm tra dữ liệu JSON
+    print('PostModel.fromJson: ${json.toString()}');
+
     id = json['id'].toString();
     title = json['title'] ?? "";
     content = json['content'] ?? "";

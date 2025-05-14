@@ -34,17 +34,20 @@ class PostModel {
 
   PostModel.fromJson(Map<String, dynamic> json) {
     // Debug log để kiểm tra dữ liệu JSON
-    print('PostModel.fromJson: ${json.toString()}');
+    // print('PostModel.fromJson: ${json.toString()}');
 
-    id = json['id'].toString();
+    id = json['id'] != null ? json['id'].toString() : "";
     title = json['title'] ?? "";
     content = json['content'] ?? "";
-    userId = json['userId'].toString();
-    languageId = json['languageId'].toString();
+    userId = json['userId'] != null ? json['userId'].toString() : "";
+    languageId =
+        json['languageId'] != null ? json['languageId'].toString() : "";
 
     // Xử lý dữ liệu người dùng đúng cách
     if (json['user'] != null) {
-      userName = "${json['user']['firstName']} ${json['user']['lastName']}";
+      userName =
+          "${json['user']['firstName'] ?? ''} ${json['user']['lastName'] ?? ''}"
+              .trim();
       userAvatar = json['user']['profileImageUrl'];
     } else {
       userName = "";
@@ -52,24 +55,51 @@ class PostModel {
     }
 
     // Xử lý các mảng
-    imageUrls = List<String>.from(json['imageUrls'] ?? []);
+    imageUrls =
+        json['imageUrls'] != null ? List<String>.from(json['imageUrls']) : [];
     tags = json['tags'] != null ? List<String>.from(json['tags']) : [];
 
     // Xử lý comments và likes
-    comments = json['comments'] != null
-        ? List<CommentModel>.from(
-            json['comments'].map((x) => CommentModel.fromJson(x)))
-        : [];
+    if (json['comments'] != null && json['comments'] is List) {
+      try {
+        comments = List<CommentModel>.from(
+            json['comments'].map((x) => CommentModel.fromJson(x)));
+      } catch (e) {
+        print('Lỗi khi parse comments: $e');
+        comments = [];
+      }
+    } else {
+      comments = [];
+    }
 
-    likes = json['likes'] != null
-        ? List<LikeModel>.from(json['likes'].map((x) => LikeModel.fromJson(x)))
-        : [];
+    if (json['likes'] != null && json['likes'] is List) {
+      try {
+        likes = List<LikeModel>.from(
+            json['likes'].map((x) => LikeModel.fromJson(x)));
+      } catch (e) {
+        print('Lỗi khi parse likes: $e');
+        likes = [];
+      }
+    } else {
+      likes = [];
+    }
 
     // Xử lý ngày tháng
-    createdAt =
-        json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null;
-    updatedAt =
-        json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null;
+    try {
+      createdAt =
+          json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null;
+    } catch (e) {
+      print('Lỗi khi parse createdAt: $e');
+      createdAt = null;
+    }
+
+    try {
+      updatedAt =
+          json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null;
+    } catch (e) {
+      print('Lỗi khi parse updatedAt: $e');
+      updatedAt = null;
+    }
   }
   Map<String, dynamic> toJson() {
     return {

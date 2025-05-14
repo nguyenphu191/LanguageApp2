@@ -976,49 +976,6 @@ class _CreatePostPageState extends State<CreatePostPage>
                     ),
                     const SizedBox(height: 24),
 
-                    // Card container for options
-                    _buildContentCard(
-                      child: Column(
-                        children: [
-                          // Đăng ẩn danh option
-                          SwitchListTile(
-                            title: Text(
-                              'Đăng ẩn danh',
-                              style: TextStyle(
-                                fontFamily: 'BeVietnamPro',
-                                fontWeight: FontWeight.w500,
-                                fontSize: 16,
-                                color:
-                                    isDarkMode ? Colors.white : Colors.black87,
-                              ),
-                            ),
-                            subtitle: Text(
-                              'Người khác sẽ không thấy thông tin cá nhân của bạn',
-                              style: TextStyle(
-                                fontFamily: 'BeVietnamPro',
-                                fontSize: 13,
-                                color: isDarkMode
-                                    ? Colors.white60
-                                    : Colors.black54,
-                              ),
-                            ),
-                            value: _isAnonymous,
-                            onChanged: (value) {
-                              setState(() {
-                                _isAnonymous = value;
-                              });
-                              // Tạo hiệu ứng haptic feedback
-                              HapticFeedback.lightImpact();
-                            },
-                            activeColor: Colors.blueAccent,
-                            contentPadding:
-                                const EdgeInsets.symmetric(horizontal: 8),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
                     // Nút đăng bài viết
                     SizedBox(
                       width: double.infinity,

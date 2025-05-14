@@ -11,6 +11,7 @@ import 'package:shimmer/shimmer.dart';
 import 'topic_page.dart';
 import 'package:flutter/material.dart';
 import 'widgets/comment_section.dart';
+import 'likes_list_page.dart';
 
 class ForumDetailPage extends StatefulWidget {
   final PostModel post;
@@ -769,10 +770,10 @@ class _ForumDetailPageState extends State<ForumDetailPage>
                 color: isLiked
                     ? (isDarkMode
                         ? Colors.pink.withOpacity(0.2)
-                        : Colors.pink[50])
+                        : Colors.pink[50] ?? Colors.pink.withOpacity(0.1))
                     : (isDarkMode
                         ? Colors.grey.withOpacity(0.2)
-                        : Colors.grey[100]),
+                        : Colors.grey[100] ?? Colors.grey.withOpacity(0.1)),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
@@ -793,15 +794,30 @@ class _ForumDetailPageState extends State<ForumDetailPage>
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Text(
-                    '${post.likes?.length ?? 0}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isLiked
-                          ? Colors.pink
-                          : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
-                      fontFamily: 'BeVietnamPro',
+                  GestureDetector(
+                    onTap: () {
+                      // Chỉ mở danh sách khi có người thích
+                      if ((post.likes?.length ?? 0) > 0) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => LikesListPage(post: post),
+                          ),
+                        );
+                      }
+                    },
+                    child: Text(
+                      '${post.likes?.length ?? 0}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isLiked
+                            ? Colors.pink
+                            : (isDarkMode
+                                ? Colors.grey[400]
+                                : Colors.grey[600]),
+                        fontFamily: 'BeVietnamPro',
+                      ),
                     ),
                   ),
                 ],

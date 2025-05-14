@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:language_app/models/post_model.dart';
+import 'package:language_app/models/like_model.dart';
 import 'package:language_app/utils/baseurl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -169,6 +170,81 @@ class PostService {
       return {
         'posts': <PostModel>[],
         'meta': {},
+      };
+    }
+  }
+
+  // Lấy danh sách người đã thích bài viết
+  Future<Map<String, dynamic>> getPostLikes(String postId,
+      {int page = 1, int limit = 20}) async {
+    try {
+      final headers = await _getHeaders();
+
+      final uri = Uri.parse(
+          '${baseUrl}post-likes/post/${postId}/users?page=${page}&limit=${limit}');
+
+      final response = await http.get(uri, headers: headers);
+
+      if (response.statusCode == 200) {
+        final dynamic responseData = json.decode(response.body);
+
+        List<dynamic> users = [];
+        Map<String, dynamic> meta = {};
+
+        // Trường hợp API trả về trực tiếp danh sách người dùng
+        if (responseData is List) {
+          users = responseData.map((user) {
+            return Map<String, dynamic>.from(user);
+          }).toList();
+
+          meta = {
+            'totalItems': users.length,
+            'currentPage': page,
+            'totalPages': 1
+          };
+        }
+        // Trường hợp API trả về cấu trúc có data và meta
+        else if (responseData is Map) {
+          if (responseData.containsKey('data')) {
+            final data = responseData['data'];
+
+            if (data is List) {
+              users =
+                  data.map((user) => Map<String, dynamic>.from(user)).toList();
+            }
+
+            if (responseData.containsKey('meta') &&
+                responseData['meta'] is Map) {
+              meta = Map<String, dynamic>.from(responseData['meta']);
+            } else {
+              meta = {
+                'totalItems': users.length,
+                'currentPage': page,
+                'totalPages': 1
+              };
+            }
+          }
+        }
+
+        return {
+          'users': users,
+          'meta': meta,
+        };
+      } else if (response.statusCode == 404) {
+        return {
+          'users': <dynamic>[],
+          'meta': <String, dynamic>{},
+        };
+      } else {
+        return {
+          'users': <dynamic>[],
+          'meta': <String, dynamic>{},
+        };
+      }
+    } catch (e) {
+      return {
+        'users': <dynamic>[],
+        'meta': <String, dynamic>{},
       };
     }
   }

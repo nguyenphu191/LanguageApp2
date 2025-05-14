@@ -262,6 +262,7 @@ class PostProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint('Gửi yêu cầu thích bài viết ID: $postId');
       final response = await _dio.post(
         '${baseUrl}post-likes',
         data: {
@@ -275,20 +276,56 @@ class PostProvider with ChangeNotifier {
         ),
       );
 
+      debugPrint('Kết quả thích bài viết: ${response.statusCode}');
+      debugPrint('Dữ liệu phản hồi: ${response.data}');
+
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = response.data;
-        final likeModel = LikeModel.fromJson(data);
-        if (_postDetail != null) {
-          _postDetail!.likes!.add(likeModel);
-        }
-        _posts.forEach((post) {
-          if (post.id == postId.toString()) {
-            post.likes!.add(likeModel);
+        try {
+          final data = response.data;
+          LikeModel likeModel;
+
+          if (data is Map<String, dynamic>) {
+            // Trường hợp API trả về trực tiếp đối tượng like
+            likeModel = LikeModel.fromJson(data);
+          } else if (data['data'] != null) {
+            // Trường hợp API trả về trong trường data
+            likeModel = LikeModel.fromJson(data['data']);
+          } else {
+            // Tạo một like model mới nếu không có dữ liệu
+            likeModel = LikeModel(
+              id: DateTime.now().millisecondsSinceEpoch.toString(),
+              postId: postId.toString(),
+            );
           }
-        });
-        _isLoading = false;
-        notifyListeners();
-        return true;
+
+          // Cập nhật vào post detail nếu đang xem
+          if (_postDetail != null && _postDetail!.id == postId.toString()) {
+            if (_postDetail!.likes == null) {
+              _postDetail!.likes = [];
+            }
+            _postDetail!.likes!.add(likeModel);
+          }
+
+          // Cập nhật vào danh sách posts
+          for (var i = 0; i < _posts.length; i++) {
+            if (_posts[i].id == postId.toString()) {
+              if (_posts[i].likes == null) {
+                _posts[i].likes = [];
+              }
+              _posts[i].likes!.add(likeModel);
+              break;
+            }
+          }
+
+          _isLoading = false;
+          notifyListeners();
+          return true;
+        } catch (parseError) {
+          debugPrint('Lỗi khi xử lý dữ liệu like: $parseError');
+          _isLoading = false;
+          notifyListeners();
+          return true; // Vẫn trả về true vì API đã thành công
+        }
       } else {
         _isLoading = false;
         notifyListeners();

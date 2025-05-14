@@ -58,19 +58,51 @@ class CommentModel {
       }
     }
 
+    // Đảm bảo các trường bắt buộc có giá trị mặc định nếu null
+    int id = 0;
+    int postId = 0;
+    int userId = 0;
+    String content = '';
+    String createdAt = '';
+    String updatedAt = '';
+
+    try {
+      id = json['id'] is int
+          ? json['id']
+          : int.tryParse(json['id']?.toString() ?? '0') ?? 0;
+      postId = json['postId'] is int
+          ? json['postId']
+          : int.tryParse(json['postId']?.toString() ?? '0') ?? 0;
+      userId = json['userId'] is int
+          ? json['userId']
+          : int.tryParse(json['userId']?.toString() ?? '0') ?? 0;
+      content = json['content']?.toString() ?? '';
+      createdAt = json['createdAt']?.toString() ?? '';
+      updatedAt = json['updatedAt']?.toString() ?? '';
+    } catch (e) {
+      print('Lỗi khi parse dữ liệu comment: $e');
+    }
+
+    List<CommentModel> replies = [];
+    if (json['replies'] != null && json['replies'] is List) {
+      try {
+        replies = List<CommentModel>.from(
+            json['replies'].map((x) => CommentModel.fromJson(x)));
+      } catch (e) {
+        print('Lỗi khi parse replies: $e');
+      }
+    }
+
     return CommentModel(
-      id: json['id'],
-      postId: json['postId'],
-      userId: json['userId'],
-      content: json['content'],
-      createdAt: json['createdAt'],
-      updatedAt: json['updatedAt'],
+      id: id,
+      postId: postId,
+      userId: userId,
+      content: content,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
       userDisplayName: displayName,
       userAvatar: avatarUrl,
-      replies: json['replies'] != null
-          ? List<CommentModel>.from(
-              json['replies'].map((x) => CommentModel.fromJson(x)))
-          : [],
+      replies: replies,
     );
   }
 
